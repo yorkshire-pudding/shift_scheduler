@@ -1,0 +1,552 @@
+<?php
+  /**
+   * Display help and module information
+   * @param path which path of the site we're displaying help
+   * @param arg array that holds the current path as would be returned from arg() function
+   * @return help text for the path
+   */
+function duty_schedule_help($path, $arg) {
+  $output = '';  //declare your output variable
+  switch ($path) {
+  case "admin/help#duty_schedule":
+    $output = '<p>'.  t("Displays EST's duty schedule") .'</p>';
+    break;
+  }
+  return $output;
+}// function duty_schedule_help
+
+
+//Core drupal hook.  Defines the relevant permissions
+//for the duty_schedule module
+function duty_schedule_perm(){
+  return array('access duty_schedule','edit duty_schedule', 'administer duty_schedule');
+
+}
+/*
+ Given cells representing the 1,2, and 3 shifts and a timestamp that
+ falls somewhere on the day in which the shifts occur
+ write out a new row in the order DATE MEDIC_1_CELL, MEDIC_2_CELL, MEDIC_3_CELL
+*/
+function write_date_row(&$page_content, $medic_cells, $timestamp){
+  $page_content .= '<tr> <td valign="center" class="table-label">';
+  $page_content .='<b>' . date('l n/j/Y', $timestamp) . '</b> </td>' ;
+  for($i = 0; $i<3 ; $i++) {
+    $page_content .= '<td>' . $medic_cells[$i] . '</ td>';
+  }
+  $page_content .= '</tr>';
+
+}
+
+function duty_schedule_old_schedule_form(){
+  //if you're already looking at an old schedule, make the form default to the first day already visible
+  if($_GET['sday'] && $_GET['smon'] && $_GET['syear']){
+    $default = array(
+		     'year' => $_GET['syear'],
+		     'day' => $_GET['sday'],
+		     'month' => $_GET['smon']
+		     );
+  }
+  
+  $form = array();
+  $form['start_date']= array(
+			     '#type' => 'date',
+			     '#required' => TRUE,
+			     '#description' => t('Select a date to see an old duty schedule'),
+			     '#default_value' => $default
+			     );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('See old schedule'));  
+  return $form;
+
+  
+}
+
+function duty_schedule_old_schedule_form_submit($form, &$form_state){
+  $fi = $form_state['clicked_button']['#post'];/* fi = "form_info */
+  $form_state['redirect']= array('duty_schedule', 'sday='. $fi['start_date']['day'] . '&'. 'smon=' . $fi['start_date']['month'] . '&' . 'syear='. $fi['start_date']['year']  );
+  
+}
+
+function _schedule_format_name($uid){
+  //TODO: this is a hack, and will break if the fid of the profile values changes
+  //TODO: this also depends on the invariant that the medic's name is in the format like "mcstrother", with exactly 1 first initial and 1 middle intial
+  //if(module_exists('profile')){
+  if(module_exists('profile')){
+    $last_name_row = db_fetch_object(db_query( "SELECT value FROM {profile_values} WHERE fid=%d AND uid=%d", 2, $uid)); //get the last name
+    $last_name = $last_name_row->value;
+    $first_name_row = db_fetch_object(db_query( "SELECT value FROM {profile_values} WHERE fid=%d AND uid=%d", 1, $uid));
+    $first_name = $first_name_row->value;
+    $first_initial = strtoupper(substr($first_name,0,1));
+    $last_initial = strtoupper(substr($last_name,0,1));
+    $last_name = $last_initial . substr($last_name, 1, strlen($last_name)-1);
+    $display_name = $first_initial ."." . $last_name;
+  }
+  else{
+    $medic_name_result = db_fetch_object(db_query("SELECT name FROM {users} WHERE uid = '%d'", $uid));
+    $display_name = $medic_name_result->name;
+  }
+
+  return $display_name;
+}
+
+//Defines how the duty schedule should be displayed
+//Only used as a callback in duty_schedule_menu
+function duty_schedule_schedule(){
+  $page_content = '';
+  $page_content .= drupal_get_form('duty_schedule_old_schedule_form');
+  $has_content = FALSE;
+  global $user; //get access to global variable representing the current user
+  
+  //get the shifts to display
+  
+  date_default_timezone_set('CST');
+  $today = getdate();
+  if($_GET['sday'] && $_GET['smon'] && $_GET['syear']){//if specified in the URL, specify the time on which to start looking for shifts
+    $midnight = mktime(0,0,0, (int)$_GET['smon'], (int)$_GET['sday'], (int)$_GET['syear']);    
+  }
+  else{//otherwise, just start at yesterday
+    $midnight = mktime(0,0,0, $today['mon'], $today['mday'], $today['year'])-60*60*24;
+  }
+  
+  $query = "SELECT uid, start_time, end_time, medic_slot, shift_id FROM " .
+    "{duty_schedule_shifts} WHERE start_time > '%s' " .
+    "ORDER BY start_time, medic_slot";
+  $queryResult = db_query($query, date("Y-m-d H:i:s", $midnight));
+  
+  $midnight = $midnight + 60*60*24;//move midnight to midnight on the day after the first day to be displayed
+  //iterate over the rows returned by the query, writing
+  //the relevant data to the page content
+  $page_content .= '<table class="body-table"> 
+		<tbody>
+			<tr>
+				<th valign="top" class="table-label"> Date </th>
+				<th valign="top"> Medic 1 </th>
+				<th valign="top"> Medic 2 </th>
+				<th valign="top"> Medic 3 </th>
+			</tr> ';//open the table html tag and add table headers
+	
+  $medic_cells = array();
+  for($i =0; $i<3; $i++){//init $medic_cells
+    $medic_cells[$i] = '';
+  }
+  while( $row = db_fetch_object($queryResult)) {
+    $has_content = TRUE;
+    $start_time_t = strtotime($row->start_time);
+    $end_time_t = strtotime($row->end_time);
+    if($start_time_t > $midnight){//a new day -> write the row and reset the variables appropriately
+      write_date_row($page_content, $medic_cells, $midnight-10);
+      $midnight = mktime(0,0,0,date('n',$start_time_t), date('j',$start_time_t)+1, date('Y',$start_time_t) ); //move $midnight to the midnight after the start time
+      for($i =0; $i<3; $i++){//reset medic cells
+	$medic_cells[$i] = '';
+      }
+    }
+    //get the medic's name
+    $name = "Open Shift";
+    if($row->uid){
+      $name = _schedule_format_name($row->uid);
+    }
+    $shift_text = $name . ' ' . date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t);
+    //$shift_text = date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t) . ' ' . $name; 
+    if(user_access('edit duty_schedule') && $start_time_t > (time() - 60*60*4)){
+      $options = array('query' => 'shift=' . $row->shift_id);
+      if ($name=="Open Shift"){
+	$options['attributes'] = array('style' => 'color: #FF0000'); //make the link red
+
+      }  
+      $shift_text = l($shift_text, 'duty_schedule/change_shift',$options);
+    }
+    
+    if($name=="Open Shift"){//if it's still an open shift, make it red and bold
+      $shift_text = '<b><font  color="Red">' . $shift_text .'</font></b>';
+    }
+    elseif($row->uid==$user->uid){
+      $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>'; 
+    }
+    $medic_cells[$row->medic_slot-1] .= '<p> ' . $shift_text .  "</p>";
+    
+    
+  }
+  write_date_row($page_content, $medic_cells, $midnight-10);//write the last day
+  $page_content .= '</tbody> </table>';
+
+  //display something if there is no content on the page
+  if ( !$has_content){
+    $page_content .= t('No current shifts to display.');
+  }
+
+  return $page_content;
+
+}
+
+//Defines the form used to create new days on the duty schedule
+//(For the purposes of this module "creating a day" basically means
+//creating a bunch of open shifts at standard times in the schedule table
+function duty_schedule_create_days_form($form_state){
+  $form = array();
+  $form['start date'] = array(
+			      '#type' => 'date',
+			      '#title' => t('Start date'),
+			      '#required' => TRUE,
+			      '#description' => t('The first date to be created on the duty schedule.')
+			      );
+  $form['end date'] = array(
+			    '#type' => 'date',
+			    '#title' => t('End date'),
+			    '#required' => TRUE,
+			    '#description' => t('The last date to be created on the duty schedule.')
+			    );
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Create days'));
+
+  return $form;
+
+}
+/*
+ Fill the date ranges specified by the form with open shifts
+ from 0000-0900, 0900-1300, 1300-1700, 1700-2100, and 2100-0000
+ in all 3 slots.  Called automatically by drupal after the submit
+ button from duty_schedule_create_days_form is pressed
+*/
+function duty_schedule_create_days_form_submit($form, &$form_state){
+  $start_time = mktime(9,0,0, $form_state['clicked_button']['#post']['start_date']['month'], $form_state['clicked_button']['#post']['start_date']['day'], $form_state['clicked_button']['#post']['start_date']['year']); /*9am on the first day requested*/
+  $end_date = mktime(0,0,0, $form_state['clicked_button']['#post']['end_date']['month'], $form_state['clicked_button']['#post']['end_date']['day']+1, $form_state['clicked_button']['#post']['end_date']['year']);//midnight on the day after the end date.  note that we add 1 so that we actually go through the end date, not up to it								      
+
+  $end_time = 0;//the end time for a particular shift
+  
+  //check to see if there are shifts with the given start_time already in the database
+  //if so, we're trying to create redundant shifts, so we should return without doing anyting
+  //TODO: This still doesn't absolutely protect against people adding redundant days
+  $redundant = db_fetch_object(db_query("SELECT shift_id FROM {duty_schedule_shifts} WHERE start_time = '%s'", date ("Y-m-d H:i:s", $start_time)));
+  if($redundant){
+    drupal_set_message(t('Creating days failed because the first day you selected has already been created.'));
+    return;
+  }
+
+  //loop over all of the times in the range creating open shifts
+  while($start_time < $end_date){
+    //generate an appropriate end time corresponding to EST's standard shifts
+    if( date('H', $start_time) == 21 ){//start time is 9pm (i.e. last shift of the day), make it a 12 hour shift (to 9am)
+      $end_time = $start_time + 60*60*12; 
+    }
+    else{
+      $end_time = $start_time + 60*60*4; //otherwise, standard 4 hour shifts
+    }
+    //create an open shift
+    for($slot =1; $slot <= 3; $slot++){ 
+      $new_record = array(
+			  'start_time' => date ("Y-m-d H:i:s", $start_time),//note: the output from this will be in local time
+			  'end_time' => date( "Y-m-d H:i:s", $end_time ),
+			  'medic_slot' => $slot,
+			  );//UID is purposely left as NULL since this will be read as an open shift.  shift_id is presumably filled in automatically
+      drupal_write_record('duty_schedule_shifts', $new_record);		
+    }
+		
+    $start_time = $end_time;//iterate to next shift
+  }
+	
+  $form_state['redirect'] = array('duty_schedule');
+  
+	
+}
+
+//Defines the appearance of the add_days page.
+//Only used as a callback in duty_schedule_menu
+function duty_schedule_add_days(){
+  return drupal_get_form('duty_schedule_create_days_form');//All we want on the page is the form, so we just automatically generate it using the standard drupal methods and return it.
+}
+
+
+/*
+Define the appearance of the form on the change shift page
+*/
+function duty_schedule_change_shift_form(&$form_state){
+  
+  $shift_id =  $_GET['shift'];
+  //Get information about the shift that we're editing
+  $shift_query_result = db_query("SELECT uid, medic_slot FROM {duty_schedule_shifts} WHERE shift_id = '%d' ", $shift_id);
+  $shift_info = db_fetch_object($shift_query_result);
+
+  /* TODO: enforce assigning medics to slots by rank
+  //Figure out which fid's correspond to which profile values
+  $first_name_object = db_fetch_object(db_query("SELECT fid WHERE name = '%s' ", 'profile_first_name'));
+  $first_name_field = $first_name_object->fid;
+  $last_name_object = db_fetch_object(db_query("SELECT fid WHERE name = '%s' ", 'profile__name'));
+  $last_name_field = $last_object->fid;
+  */
+
+  //Get a list of medics who are eligible to take this shift
+  $options = array();
+  $options[0] = ' ';
+  $options_query = "SELECT uid, name FROM {users} WHERE uid > 1 AND status = 1 ORDER BY name";//DESC ensures names appear in alphabetical order //TODO: this will get significantly more complex when we enforce rank
+  $options_result = db_query($options_query);
+  while( $options_row = db_fetch_object($options_result) ){
+    $options[$options_row->uid] = $options_row->name;
+  }
+  $default_uid = 0;
+  if($shift_info->uid){
+    $default_uid = $shift_info->uid;
+  }
+  
+  $form = array();
+  $form['shift_id'] = array(
+			  '#type' =>'hidden',
+			  '#value' => $shift_id
+			  );
+  $form['medic'] = array(
+			 '#type' => 'select',
+			 '#title' => t('Medic'),
+			 '#default_value' => $default_uid,
+			 '#options' => $options,
+			 '#description' => t('The medic on this shift.'),
+			 '#weight' => -10
+			 );
+  $form['split_time'] = array(
+			      '#type' => 'textfield',
+			      '#title' => 'Split Time',
+			      '#size' => 10,
+			      '#maxlength' =>4,
+			      '#weight' => 0
+			      );
+  $form['secondary_medic'] = array(
+			 '#type' => 'select',
+			 '#title' => t('Secondary Medic'),
+			 '#default_value' => 0,
+			 '#options' => $options, 
+			 '#description' => t("The medic to take the second part of the shift.  Leave this blank unless you're splitting the shift."),
+			 '#weight' => 9
+			 );
+  $form['submit'] = array('#type' => 'submit', 
+			  '#value' => t('Change shift'), 
+			  '#weight' => 10,
+			  );
+  
+  return $form;
+}
+
+/*
+Process the change shift form after it is submitted
+ */
+function duty_schedule_change_shift_form_submit($form, &$form_state){
+  $fi = $form_state['clicked_button']['#post'];/* fi = "form_info */
+  
+  //Get information about the shift that we're editing
+  $shift_id =  (int) $fi['shift_id'];
+  $shift_query_result = db_query("SELECT * FROM {duty_schedule_shifts} WHERE shift_id = '%d' ", $shift_id);
+  $shift_info = db_fetch_object($shift_query_result);
+  $start_time = strtotime($shift_info->start_time);
+  $end_time = strtotime($shift_info->end_time);
+
+  //split is true iff a valid split has been entered
+  $split_time = 0;
+  $split = ( $fi['medic'] != 0 && $fi['secondary_medic'] != 0 && strlen($fi['split_time']) == 4);//preliminary check that a time and secondary medic have been entered
+  if($split){//convert the military time entry into a full timestamp
+    $st = $fi['split_time'];//st = split time
+    $hour = (int)($st[0] . $st[1]);
+    $minute = (int)($st[2] . $st[3]);
+    //check that the hour:minute part of the military time entry isn't after the end time
+    //if it is, there's no way this time can be valid
+    $temp_split_time = mktime($hour, $minute);
+    //infer the date of the split time based on where it occurs relative to the start time
+    if($temp_time < mktime(date('G', $end_time), date('i', $end_time))){
+      //if it's before the start time, then both the split and the end times must occur on the next day
+      $split_time = mktime($hour, $minute, 0, date('n', $end_time), date('j', $end_time), date('Y', $end_time));
+    }
+    else{//split occurs on the same day as the start time
+      $split_time = mktime($hour, $minute, 0, date('n', $start_time), date('j', $start_time), date('Y', $start_time));
+    }
+  }
+  $split = $split && ($start_time < $split_time  && $split_time < $end_time);//definitive check if a split has occurred
+
+  //simple case: no split
+  if(!($split)){
+    //update the shift
+    db_query("UPDATE {duty_schedule_shifts} SET uid='%d' WHERE shift_id = '%d'", $fi['medic'], $shift_info->shift_id  );
+    /*Find the next chronological shift in this slot and redirect to changing it*/
+    $next_shift_info = db_fetch_object(db_query("SELECT shift_id FROM {duty_schedule_shifts} WHERE medic_slot=%d AND start_time='%s'",$shift_info->medic_slot, $shift_info->end_time));
+    if($next_shift_info){//if there is a next shift, redirect to changing it
+      $form_state['redirect'] = array('duty_schedule/change_shift', 'shift='.($next_shift_info->shift_id) );
+    }
+    else{//no more shifts in this slot
+      $form_state['redirect'] = array('duty_schedule');
+    }
+  }
+  elseif($split){//handle split
+    db_query("UPDATE {duty_schedule_shifts} SET uid=%d, end_time='%s' WHERE shift_id='%d'", $fi['medic'], date( 'Y-m-d H:i:s', $split_time), $shift_info->shift_id);
+    $new_record = array(
+			'uid' => $fi['secondary_medic'],
+			'start_time' => date( 'Y-m-d H:i:s', $split_time),
+			'end_time' => date( 'Y-m-d H:i:s', $end_time),
+			'medic_slot' => $shift_info->medic_slot
+			);
+    drupal_write_record('duty_schedule_shifts', $new_record);
+    $form_state['redirect'] = array('duty_schedule');
+  }
+  
+  
+}
+
+/*
+Define the appearance of the Change shift page
+ */
+function duty_schedule_change_shift(){
+  //get the time and date of the shift
+  $shift_info = db_fetch_object(db_query('SELECT start_time, end_time FROM {duty_schedule_shifts} WHERE shift_id=%d', $_GET['shift']));
+  $start_time = strtotime($shift_info->start_time);
+  $end_time = strtotime($shift_info->end_time);
+  drupal_set_title( t( 'Changing shift %st - %et  on %sd',array('%st'=> date('Hi',$start_time), 
+								'%et'=> date('Hi', $end_time), 
+								'%sd'=> date('M j', $start_time) )));
+  $page_content = drupal_get_form('duty_schedule_change_shift_form');
+  return $page_content; 
+  
+}
+
+
+function duty_schedule_old_duty_form(&$form_state){
+  //Get a list of all the medics
+  $options = array();
+  $options[0] = ' ';
+  $options_query = "SELECT uid, name FROM {users} WHERE uid > 1 ORDER BY name";//DESC ensures names appear in alphabetical order //TODO: this will get significantly more complex when we enforce rank
+  $options_result = db_query($options_query);
+  while( $options_row = db_fetch_object($options_result) ){
+    $options[$options_row->uid] = $options_row->name;
+  }
+  $form = array();
+  $form['medic'] = array(
+			  '#type'=>'select',
+			  '#title'=>t('Medic'),
+			  '#description'=>t('The medic whose duty you would like to review'),
+			  '#options'=>$options,
+			  '#default_value'=>$user->uid,
+			  '#required'=>TRUE
+			  );//$user is a global variable that refers to the currently logged in user
+  $form['start_date'] = array(
+			       '#type' => 'date',
+			       '#title' =>t('Start date'),
+			       '#descrption'=>t('Default value is today'),
+			       '#required'=>TRUE,
+			       );
+  $form['end_date'] = array(
+			     '#type'=>'date',
+			     '#title' => t('End date'),
+			     '#required' => TRUE,
+			     '#description'=>t('Default value is a year from today.'),
+			     '#default_value'=> array('year' => date('Y')+1,
+						      'month' => date('m'),
+						      'day' => date('j')
+						      )
+			     );
+  $form['submit'] = array(
+			   '#type' =>'submit',
+			   '#value'=>t('Submit')
+			   );
+  return $form;
+}
+
+function duty_schedule_old_duty_form_submit($form, &$form_state){
+  
+  $fi = $form_state['clicked_button']['#post'];/*fi = form info*/
+  $start_time = mktime(0,0,0, $fi['start_date']['month'], $fi['start_date']['day'], $fi['start_date']['year']);
+  $end_time = mktime(0,0,0, $fi['end_date']['month'], $fi['end_date']['day'], $fi['end_date']['year']);
+  $form_state['redirect'] = array('duty_schedule/old_duty_results', 'uid=' . $fi['medic'] .'&' . 'start_time='. $start_time . '&' . 'end_time='.$end_time );
+  
+					       
+}
+
+function duty_schedule_old_duty(){
+  $page_content =drupal_get_form('duty_schedule_old_duty_form');
+  return $page_content;
+   
+}
+
+/*
+Define the appearance of the results page for the duty schedule
+ */
+function duty_schedule_old_duty_results(){
+  $page_content = '';
+  //get the parameters from the URL
+  $uid = $_GET['uid'];  
+  $start_time = $_GET['start_time'];
+  $end_time = $_GET['end_time'];
+  //query the datebase
+  $result = db_query("SELECT medic_slot, start_time, end_time \n " .
+		     "FROM {duty_schedule_shifts} \n " .
+		     "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s') \n " .
+		     "ORDER BY start_time \n "
+		     , 
+		     $uid,
+		     date( 'Y-m-d H:i:s', $start_time), 
+		     date( 'Y-m-d H:i:s', $end_time) );
+  
+  $total_duty = 0;//counter to count the total amount of duty taken
+  //write the results of the database query out into a table
+  
+  //set up the table headers
+  $page_content .= '<table class="body-table"> 
+		<tbody>
+			<tr>
+				<th valign="top" class="table-label"> Date </th>
+				<th valign="top"> Shifts </th>
+			</tr> ';//open the table html tag and add table headers
+  $midnight = 0;
+  $has_content  = FALSE;
+  while($row = db_fetch_object($result)){
+    $has_content = TRUE;
+    $stt = strtotime($row->start_time);
+    $ett = strtotime($row->end_time);
+    $total_duty += $ett - $stt;
+    if($midnight<$stt){//if we've entered a new day, add a date label and update the $midnight marker
+      if($midnight != 0){//if this isn't the first row, close the last row
+	$page_content.= '</td></tr>';
+      }
+      $page_content .= ' <tr> <td class="table-label">' . date('n/j/Y', $stt) . '</td> <td>';
+      $midnight = mktime(0,0,0,date('n',$stt),date('j',$stt)+1, date('Y',$stt));//midnight on the day after the start time
+    }
+    $page_content .= '<p>' . date('Hi', $stt) . ' - ' . date('Hi',$ett) . '</p>';
+  }
+  $page_content .= '</tbody></table>';
+  if(!$has_content){
+    $page_contant .= "No shifts to display"; 
+  }  
+
+  $page_content .= '<p><b> Total duty taken:</b>' . 
+    floor($total_duty / 3600) . ' hours ' .
+    floor(($total_duty % 3600)/60) . ' minutes </p>';
+  return $page_content;
+  
+}
+
+
+function duty_schedule_menu(){
+  $items = array();
+  $items['duty_schedule'] = array(
+				  'title' => 'Duty schedule',
+				  'page callback' => 'duty_schedule_schedule',
+				  'access arguments' => array('access duty_schedule'),
+				  'type' => MENU_NORMAL_ITEM
+				  );
+  $items['duty_schedule/add_days'] = array(
+					   'title' => 'Add days',
+					   'page callback' => 'duty_schedule_add_days',
+					   'access arguments' => array('administer duty_schedule'),
+					   'type' => MENU_NORMAL_ITEM
+					   );
+  $items['duty_schedule/change_shift'] = array(
+					       'title' => 'Change shift',
+					       'page callback' => 'duty_schedule_change_shift',
+					       'access arguments' => array('edit duty_schedule'),
+					       'type' => MENU_CALLBACK
+					       );
+  $items['duty_schedule/old_duty'] = array(
+					   'title' => 'Old duty',
+					   'page callback' => 'duty_schedule_old_duty',
+					   'access arguments' => array('access duty_schedule'),
+					   'type' => MENU_NORMAL_ITEM
+					   );
+  $items['duty_schedule/old_duty_results']= array(
+						  'title' => 'Old duty',
+						  'page callback' => 'duty_schedule_old_duty_results',
+						  'access arguments' => array('access duty_schedule'),
+						  'type' => MENU_CALLBACK
+						  );
+
+  return $items;
+}
