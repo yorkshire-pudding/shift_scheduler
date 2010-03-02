@@ -145,8 +145,9 @@ function duty_schedule_schedule(){
       $name = _schedule_format_name($row->uid);
     }
     $shift_text = $name . ' ' . date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t);
-    //$shift_text = date('Hi', $start_time_t) . ' -  ' . date('Hi', $end_time_t) . ' ' . $name; 
-    if(user_access('edit duty_schedule') && $start_time_t > (time() - 60*60*4)){
+    //If the user has the correct permissions, and the shift didn't occur too far in the past,
+    //make the text into a link so it can be edited
+    if(user_access('edit duty_schedule') && $start_time_t > (time() - 60*60*4)){ 
       $options = array('query' => 'shift=' . $row->shift_id);
       if ($name=="Open Shift"){
 	$options['attributes'] = array('style' => 'color: #FF0000'); //make the link red
@@ -261,7 +262,7 @@ function duty_schedule_change_shift_form(&$form_state){
   
   $shift_id =  $_GET['shift'];
   //Get information about the shift that we're editing
-  $shift_query_result = db_query("SELECT uid, medic_slot FROM {duty_schedule_shifts} WHERE shift_id = '%d' ", $shift_id);
+  $shift_query_result = db_query("SELECT uid, medic_slot, start_time FROM {duty_schedule_shifts} WHERE shift_id = '%d' ", $shift_id);
   $shift_info = db_fetch_object($shift_query_result);
 
   /* TODO: enforce assigning medics to slots by rank
@@ -393,7 +394,11 @@ function duty_schedule_change_shift(){
   drupal_set_title( t( 'Changing shift %st - %et  on %sd',array('%st'=> date('Hi',$start_time), 
 								'%et'=> date('Hi', $end_time), 
 								'%sd'=> date('M j', $start_time) )));
-  $page_content = drupal_get_form('duty_schedule_change_shift_form');
+  if ($start_time >= time() - 60*60*4){//if the shift didn't happen in the past
+    $page_content = drupal_get_form('duty_schedule_change_shift_form');
+  }else{
+    $page_content = "This shift occured in the past.  Please contact the webmaster to edit historical shifts.";
+  }
   return $page_content; 
   
 }
