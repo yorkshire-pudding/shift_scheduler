@@ -530,17 +530,18 @@ deactivate slots, etc.
 
 
 function duty_schedule_admin_slots() {
-  $header = array(t('Name'), array('data' => t('Operations'), 'colspan' => 2));
-  $result = db_query("SELECT slot_id, display_name FROM {duty_schedule_slots}"); 
-  while( $row = db_fetch_object($result) ) {
-    $edit_default_shifts = l(t('edit default shifts'), 'admin/duty_schedule/default_shifts/'. $row->slot_id);
-    $rows[] = array($row->display_name, l(t('edit role'), 'admin/duty_schedule/slot/'. $row->slot_id), $edit_default_shifts);
+  if(!arg(4)){
+    $header = array(t('Name'), array('data' => t('Operations'), 'colspan' => 2));
+    $result = db_query("SELECT slot_id, display_name FROM {duty_schedule_slots}"); 
+    while( $row = db_fetch_object($result) ) {
+      $edit_default_shifts = l(t('edit default shifts'), 'admin/settings/duty_schedule/default_shifts/'. $row->slot_id);
+      $rows[] = array($row->display_name, l(t('edit role'), 'admin/settings/duty_schedule/slot/'. $row->slot_id), $edit_default_shifts);
+    }
   }
   $form = drupal_get_form('duty_schedule_admin_slot_form');
   //$form = duty_schedule_admin_slot_form();
   //$rows[] = array(drupal_render($form['name']), array('data' => drupal_render($form['submit']), 'colspan' => 2));
 
-  //$output = drupal_render($form);
   $output .= theme('table', $header, $rows);
   $output .= $form;
   return $output;
@@ -548,7 +549,7 @@ function duty_schedule_admin_slots() {
 
 
 function duty_schedule_admin_slot_form(){
-  $slot_id = arg(5); // takes the 4th argument on the drupal path.  e.g. takes 'slot' from admin/settings/duty_schedule/slot/4
+  $slot_id = arg(4); // takes the 5th argument on the drupal path.  e.g. takes 4 from admin/settings/duty_schedule/slot/4
   if($slot_id){
     $row = db_fetch_object(db_query("SELECT * FROM {duty_schedule_slots} WHERE slot_id=%d", $slot_id));
     //display the edit slot form
@@ -631,7 +632,7 @@ function duty_schedule_admin_slot_submit($form, &$form_state) {
     drupal_set_message(t('The slot and all of its associated shifts have been deleted.'));
   }
   else if ($form_state['values']['op'] == t('Add slot')) {
-    db_query("INSERT INTO {duty_schedule_slots} (display_name) VALUES ('%s')", $form_state['values']['name']);
+    db_query("INSERT INTO {duty_schedule_slots} (display_name, status) VALUES ('%s', 0)", $form_state['values']['name']);
     drupal_set_message(t('The slot has been added.'));
   }
   $form_state['redirect'] = 'admin/settings/duty_schedule/slot';
