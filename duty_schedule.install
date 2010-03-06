@@ -38,30 +38,55 @@ function duty_schedule_schema() {
 	//TODO: figure out a way to index using the start time for fast lookups.  This table is going to get big, and we can't do linear time searches all over the place
 	);//closes schema array
 	$schema['duty_schedule_slots'] = array(
-	'description' => t('Defiles the different slots that must be filled in a work day.'),
+	'description' => t('Defines the different slots that must be filled in a work day.'),
 	'fields' => array(
 		'slot_id' => array(
 			'description' => t('An arbitrary unique identifier for each slot'),
 			'type' => 'serial',
 			'unsigned' => TRUE,
 			'not null' => TRUE
-				   )
+				   ),
 		'disply_name' => array(
 			      'description' => t('e.g. Supervisor'),
 			       'type' => 'varchar',
 			      'length' => 255,
 			      'not null' => TRUE,
 			      'default'=>''
-				       )
+				       ),
 		'status' => array(
 			'description' => t('1 - Active, 2 - Deactivated'),
 			'size' => 'small',
 			'type' => 'int',
 			'not null' => FALSE,
 			'unsigned' => TRUE
-				  )
-		)
-					       
+				  ),
+			  ),
+	'primary_key' => array('slot_id')
+	);//closes the "$schema['duty_schedule_slots'] = array(" line
+
+	$schema['duty_schedule_slot_times'] = array(
+	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
+	'fields' => array(
+		'slot_id' => array(
+			'description' => t('The slot id to which this shift should be added'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   )
+			  ),
+	        'start_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+		),
+		'end_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+				    ),
+	'primary_key' => array('slot_id')
+	);
+	
 	return $schema;
 }
 
