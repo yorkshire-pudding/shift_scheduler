@@ -516,48 +516,6 @@ function duty_schedule_old_duty_results(){
 }
 
 
-function duty_schedule_menu(){
-  $items = array();
-  $items['duty_schedule'] = array(
-				  'title' => 'Duty schedule',
-				  'page callback' => 'duty_schedule_schedule',
-				  'access arguments' => array('access duty_schedule'),
-				  'type' => MENU_NORMAL_ITEM
-				  );
-  $items['duty_schedule/add_days'] = array(
-					   'title' => 'Add days',
-					   'page callback' => 'duty_schedule_add_days',
-					   'access arguments' => array('administer duty_schedule'),
-					   'type' => MENU_NORMAL_ITEM
-					   );
-  $items['duty_schedule/change_shift'] = array(
-					       'title' => 'Change shift',
-					       'page callback' => 'duty_schedule_change_shift',
-					       'access arguments' => array('edit duty_schedule'),
-					       'type' => MENU_CALLBACK
-					       );
-  $items['duty_schedule/old_duty'] = array(
-					   'title' => 'Old duty',
-					   'page callback' => 'duty_schedule_old_duty',
-					   'access arguments' => array('access duty_schedule'),
-					   'type' => MENU_NORMAL_ITEM
-					   );
-  $items['duty_schedule/old_duty_results']= array(
-						  'title' => 'Old duty',
-						  'page callback' => 'duty_schedule_old_duty_results',
-						  'access arguments' => array('access duty_schedule'),
-						  'type' => MENU_CALLBACK
-						  );
-  $items['admin/duty_schedule/slot/'] = array(
-					      'title' => 'Edit slots',
-					      'page callback' => 'duty_schedule_admin_slots',
-					      'access arguments' => array('admin duty_schedule'),
-					      'type' => MENU_CALLBACK
-					      );
-
-
-  return $items;
-}
 
 
 /**** ADMINISTRATIVE FEATURES
@@ -575,21 +533,22 @@ function duty_schedule_admin_slots() {
   $header = array(t('Name'), array('data' => t('Operations'), 'colspan' => 2));
   $result = db_query("SELECT slot_id, display_name FROM {duty_schedule_slots}"); 
   while( $row = db_fetch_object($result) ) {
-    $edit_default_shifts = l(t('edit default shifts'), 'admin/duty_schedule/default_shifts/'. $result->slot_id);
-    $rows[] = array($result->display_name, l(t('edit role'), 'admin/duty_schedule/slot/'. $result->slot_id), $edit_default_shifts);
+    $edit_default_shifts = l(t('edit default shifts'), 'admin/duty_schedule/default_shifts/'. $row->slot_id);
+    $rows[] = array($row->display_name, l(t('edit role'), 'admin/duty_schedule/slot/'. $row->slot_id), $edit_default_shifts);
   }
-  $form = duty_schedule_admin_slot_form();
-  $rows[] = array(drupal_render($form['name']), array('data' => drupal_render($form['submit']), 'colspan' => 2));
+  $form = drupal_get_form('duty_schedule_admin_slot_form');
+  //$form = duty_schedule_admin_slot_form();
+  //$rows[] = array(drupal_render($form['name']), array('data' => drupal_render($form['submit']), 'colspan' => 2));
 
-  $output = drupal_render($form);
+  //$output = drupal_render($form);
   $output .= theme('table', $header, $rows);
-
+  $output .= $form;
   return $output;
 }
 
 
 function duty_schedule_admin_slot_form(){
-  $slot_id = arg(4); // takes the 4th argument on the drupal path.  e.g. takes 4 from admin/duty_schedule/slot/4
+  $slot_id = arg(5); // takes the 4th argument on the drupal path.  e.g. takes 'slot' from admin/settings/duty_schedule/slot/4
   if($slot_id){
     $row = db_fetch_object(db_query("SELECT * FROM {duty_schedule_slots} WHERE slot_id=%d", $slot_id));
     //display the edit slot form
@@ -623,15 +582,16 @@ function duty_schedule_admin_slot_form(){
     $form['name'] = array(
 			  '#type' => 'textfield',
 			  '#size' => 32,
-			  '#maxlength' => 64,
+			  '#maxlength' => 64
 			  );
     $form['submit'] = array(
 			    '#type' => 'submit',
-			    '#value' => t('Add slot'),
+			    '#value' => t('Add slot')
 			    );
   }
   $form['#submit'][] = 'duty_schedule_admin_slot_submit';
   $form['#validate'][] = 'duty_schedule_admin_slot_validate';
+  return $form;
   
 }
 
@@ -640,14 +600,14 @@ function duty_schedule_admin_slot_validate($form, &$form_state){
   if ($form_state['values']['name']) {
     //Edit role
     if ($form_state['values']['op'] == t('Save slot')) {
-      if (db_result(db_query("SELECT COUNT(*) FROM {duty_schedule_slots} WHERE name = '%s' AND slot_id != %d", $form_state['values']['name'], $form_state['values']['slot_id']))) {
+      if (db_result(db_query("SELECT COUNT(*) FROM {duty_schedule_slots} WHERE display_name = '%s' AND slot_id != %d", $form_state['values']['name'], $form_state['values']['slot_id']))) {
         form_set_error('name', t('The slot name %name already exists. Please choose another role name.', array('%name' => $form_state['values']['name'])));
       }
     }
     //Add role
     if ($form_state['values']['op'] == t('Add slot')) {
       //check that there isn't already a slot with that name
-      if (db_result(db_query("SELECT COUNT(*) FROM {duty_schedule_slots} WHERE name = '%s'", $form_state['values']['name']))) {
+      if (db_result(db_query("SELECT COUNT(*) FROM {duty_schedule_slots} WHERE display_name = '%s'", $form_state['values']['name']))) {
 	form_set_error('name', t('The slot name %name already exists. Please choose another slot name.', array('%name' => $form_state['values']['name'])));
       }
     }
@@ -670,10 +630,64 @@ function duty_schedule_admin_slot_submit($form, &$form_state) {
     
     drupal_set_message(t('The slot and all of its associated shifts have been deleted.'));
   }
-  else if ($form_state['values']['op'] == t('Add role')) {
+  else if ($form_state['values']['op'] == t('Add slot')) {
     db_query("INSERT INTO {duty_schedule_slots} (display_name) VALUES ('%s')", $form_state['values']['name']);
     drupal_set_message(t('The slot has been added.'));
   }
-  $form_state['redirect'] = 'admin/user/roles';
+  $form_state['redirect'] = 'admin/settings/duty_schedule/slot';
   return;
 }
+
+
+
+
+function duty_schedule_menu(){
+  $items = array();
+  $items['duty_schedule'] = array(
+				  'title' => 'Duty Schedule',
+				  'page callback' => 'duty_schedule_schedule',
+				  'access arguments' => array('access duty_schedule'),
+				  'type' => MENU_NORMAL_ITEM
+				  );
+  $items['duty_schedule/add_days'] = array(
+					   'title' => 'Add days',
+					   'page callback' => 'duty_schedule_add_days',
+					   'access arguments' => array('administer duty_schedule'),
+					   'type' => MENU_NORMAL_ITEM
+					   );
+  $items['duty_schedule/change_shift'] = array(
+					       'title' => 'Change shift',
+					       'page callback' => 'duty_schedule_change_shift',
+					       'access arguments' => array('edit duty_schedule'),
+					       'type' => MENU_CALLBACK
+					       );
+  $items['duty_schedule/old_duty'] = array(
+					   'title' => 'Old duty',
+					   'page callback' => 'duty_schedule_old_duty',
+					   'access arguments' => array('access duty_schedule'),
+					   'type' => MENU_NORMAL_ITEM
+					   );
+  $items['duty_schedule/old_duty_results']= array(
+						  'title' => 'Old duty',
+						  'page callback' => 'duty_schedule_old_duty_results',
+						  'access arguments' => array('access duty_schedule'),
+						  'type' => MENU_CALLBACK
+						  );
+  $items['admin/settings/duty_schedule']= array(
+						'title' => 'Duty Schedule',
+						'access arguemnts' => array('administer duty_schedule'),
+						'type' => MENU_NORMAL_ITEM,
+						'page callback' => 'duty_schedule_admin_slots',
+						);
+  $items['admin/settings/duty_schedule/slot'] = array(
+					      'title' => 'Edit slots',
+					      'page callback' => 'duty_schedule_admin_slots',
+					      'access arguments' => array('administer duty_schedule'),
+					      'type' => MENU_NORMAL_ITEM
+					      );
+
+
+  return $items;
+}
+
+

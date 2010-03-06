@@ -1,5 +1,5 @@
 ; $Id$
 name = "Duty schedule"
-description = "A drupal-compatible implementation of EST's duty schedule."
+description = "A module to handle scheduling employees in shifts"
 core = 6.x
 dependencies[] = user
