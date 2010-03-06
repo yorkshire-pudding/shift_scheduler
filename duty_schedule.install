@@ -21,7 +21,7 @@ function duty_schedule_schema() {
 			'type' => 'datetime',
 			'not null' => TRUE
 		),
-		'medic_slot' => array(
+		'slot_id' => array(
 			'description' => t('The position in the duty crew.'),
 			'type' => 'int',
 			'size' => 'tiny',
