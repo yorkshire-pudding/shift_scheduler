@@ -48,7 +48,7 @@ function duty_schedule_schema() {
 				   ),
 		'disply_name' => array(
 			      'description' => t('e.g. Supervisor'),
-			       'type' => 'varchar',
+			      'type' => 'varchar',
 			      'length' => 255,
 			      'not null' => TRUE,
 			      'default'=>''
@@ -61,31 +61,38 @@ function duty_schedule_schema() {
 			'unsigned' => TRUE
 				  ),
 			  ),
-	'primary_key' => array('slot_id')
+	'primary key' => array('slot_id')
 	);//closes the "$schema['duty_schedule_slots'] = array(" line
 
 	$schema['duty_schedule_slot_times'] = array(
 	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
 	'fields' => array(
-		'slot_id' => array(
-			'description' => t('The slot id to which this shift should be added'),
+		'slot_time_id' => array(
+			'description' => t('An arbitrary unique identifier for each slot time'),
 			'type' => 'serial',
 			'unsigned' => TRUE,
 			'not null' => TRUE
-				   )
-			  ),
+				   ),
+		'slot_id' => array(
+			'description' => t('The slot id to which this shift should be added'),
+			'type' => 'int',
+			'size'=> 'tiny',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
 	        'start_time' => array(
 			'description' => t('The start time for a shift.'),
 			'type' => 'datetime',
 			'not null' => TRUE
-		),
+				      ),
 		'end_time' => array(
 			'description' => t('The start time for a shift.'),
 			'type' => 'datetime',
 			'not null' => TRUE
-				    ),
-	'primary_key' => array('slot_id')
-	);
+				    )
+			  ),
+	'primary key' => array('slot_time_id')
+	 );
 	
 	return $schema;
 }
@@ -123,32 +130,40 @@ function duty_schedule_update_6101(){
 			'unsigned' => TRUE
 				  ),
 			  ),
-	'primary_key' => array('slot_id')
+	'primary key' => array('slot_id')
 						  )
 	       );
   db_create_table($ret, 'duty_schedule_slot_times', array(
 	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
 	'fields' => array(
-		'slot_id' => array(
-			'description' => t('The slot id to which this shift should be added'),
+		 'slot_time_id' => array(
+			'description' => t('An arbitrary unique identifier for each slot time'),
 			'type' => 'serial',
 			'unsigned' => TRUE,
 			'not null' => TRUE
-				   )
-			  ),
+				   ),
+		'slot_id' => array(
+			'description' => t('The slot id to which this shift should be added'),
+			'type' => 'int',
+			'size'=> 'tiny',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
 	        'start_time' => array(
 			'description' => t('The start time for a shift.'),
 			'type' => 'datetime',
 			'not null' => TRUE
-		),
+				      ),
 		'end_time' => array(
 			'description' => t('The start time for a shift.'),
 			'type' => 'datetime',
 			'not null' => TRUE
-				    ),
-	'primary_key' => array('slot_id')
-						       ) 
-	       );
+				    )
+			  ),
+	'primary key' => array('slot_time_id')
+	)
+	);
+
 
 }
 
