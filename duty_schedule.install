@@ -99,7 +99,7 @@ function duty_schedule_update_6101(){
 			'size' => 'tiny',
 			'not null' => TRUE)
 		  );
-  db_add_table($ret, 'duty_schedule_slots', array(
+  db_create_table($ret, 'duty_schedule_slots', array(
 	'description' => t('Defines the different slots that must be filled in a work day.'),
 	'fields' => array(
 		'slot_id' => array(
@@ -126,7 +126,7 @@ function duty_schedule_update_6101(){
 	'primary_key' => array('slot_id')
 						  )
 	       );
-  db_add_table($ret, 'duty_schedule_slot_times', array(
+  db_create_table($ret, 'duty_schedule_slot_times', array(
 	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
 	'fields' => array(
 		'slot_id' => array(
