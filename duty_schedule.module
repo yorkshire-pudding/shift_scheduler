@@ -640,6 +640,11 @@ function duty_schedule_admin_slot_submit($form, &$form_state) {
 }
 
 
+function duty_schedule_admin_default_shifts(){
+  $output = arg(4);
+  return $output;
+}
+
 
 
 function duty_schedule_menu(){
@@ -686,6 +691,12 @@ function duty_schedule_menu(){
 					      'access arguments' => array('administer duty_schedule'),
 					      'type' => MENU_NORMAL_ITEM
 					      );
+  $items['admin/settings/duty_schedule/default_shifts']= array(
+							       'title' => 'Edit default shifts',
+							       'page callback' => 'duty_schedule_admin_default_shifts',
+							       'access arguments' => array('administer duty_schedule'),
+							       'type' => MENU_CALLBACk
+							       );
 
 
   return $items;
