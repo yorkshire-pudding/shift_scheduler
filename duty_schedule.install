@@ -37,6 +37,31 @@ function duty_schedule_schema() {
 	'primary key' => array('shift_id')
 	//TODO: figure out a way to index using the start time for fast lookups.  This table is going to get big, and we can't do linear time searches all over the place
 	);//closes schema array
+	$schema['duty_schedule_slots'] = array(
+	'description' => t('Defiles the different slots that must be filled in a work day.'),
+	'fields' => array(
+		'slot_id' => array(
+			'description' => t('An arbitrary unique identifier for each slot'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   )
+		'disply_name' => array(
+			      'description' => t('e.g. Supervisor'),
+			       'type' => 'varchar',
+			      'length' => 255,
+			      'not null' => TRUE,
+			      'default'=>''
+				       )
+		'status' => array(
+			'description' => t('1 - Active, 2 - Deactivated'),
+			'size' => 'small',
+			'type' => 'int',
+			'not null' => FALSE,
+			'unsigned' => TRUE
+				  )
+		)
+					       
 	return $schema;
 }
 
