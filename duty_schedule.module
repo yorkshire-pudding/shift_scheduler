@@ -9,7 +9,7 @@ function duty_schedule_help($path, $arg) {
   $output = '';  //declare your output variable
   switch ($path) {
   case "admin/help#duty_schedule":
-    $output = '<p>'.  t("Displays EST's duty schedule") .'</p>';
+    $output = '<p>'.  t("Displays the duty schedule managed by shift_scheduler") .'</p>';
     break;
   }
   return $output;
@@ -67,9 +67,6 @@ function duty_schedule_old_schedule_form_submit($form, &$form_state){
 }
 
 function _schedule_format_name($uid){
-  //TODO: this is a hack, and will break if the fid of the profile values changes
-  //TODO: this also depends on the invariant that the medic's name is in the format like "mcstrother", with exactly 1 first initial and 1 middle intial
-  //if(module_exists('profile')){
   if(module_exists('profile')){
     $last_name_row = db_fetch_object(db_query( "SELECT value FROM {profile_values} WHERE fid=%d AND uid=%d", 2, $uid)); //get the last name
     $last_name = $last_name_row->value;
@@ -107,9 +104,9 @@ function duty_schedule_schedule(){
     $midnight = mktime(0,0,0, $today['mon'], $today['mday'], $today['year'])-60*60*24;
   }
   
-  $query = "SELECT uid, start_time, end_time, medic_slot, shift_id FROM " .
+  $query = "SELECT uid, start_time, end_time, slot_id, shift_id FROM " .
     "{duty_schedule_shifts} WHERE start_time > '%s' " .
-    "ORDER BY start_time, medic_slot";
+    "ORDER BY start_time, slot_id";
   $queryResult = db_query($query, date("Y-m-d H:i:s", $midnight));
   
   $midnight = $midnight + 60*60*24;//move midnight to midnight on the day after the first day to be displayed
@@ -162,7 +159,7 @@ function duty_schedule_schedule(){
     elseif($row->uid==$user->uid){
       $shift_text = '<font style="BACKGROUND-COLOR: #254117">' . $shift_text . '</font>'; 
     }
-    $medic_cells[$row->medic_slot-1] .= '<p> ' . $shift_text .  "</p>";
+    $medic_cells[$row->slot_id-1] .= '<p> ' . $shift_text .  "</p>";
     
     
   }
@@ -235,7 +232,7 @@ function duty_schedule_create_days_form_submit($form, &$form_state){
       $new_record = array(
 			  'start_time' => date ("Y-m-d H:i:s", $start_time),//note: the output from this will be in local time
 			  'end_time' => date( "Y-m-d H:i:s", $end_time ),
-			  'medic_slot' => $slot,
+			  'slot_id' => $slot,
 			  );//UID is purposely left as NULL since this will be read as an open shift.  shift_id is presumably filled in automatically
       drupal_write_record('duty_schedule_shifts', $new_record);		
     }
@@ -262,7 +259,7 @@ function duty_schedule_change_shift_form(&$form_state){
   
   $shift_id =  $_GET['shift'];
   //Get information about the shift that we're editing
-  $shift_query_result = db_query("SELECT uid, medic_slot, start_time FROM {duty_schedule_shifts} WHERE shift_id = '%d' ", $shift_id);
+  $shift_query_result = db_query("SELECT uid, slot_id, start_time FROM {duty_schedule_shifts} WHERE shift_id = '%d' ", $shift_id);
   $shift_info = db_fetch_object($shift_query_result);
 
   /* TODO: enforce assigning medics to slots by rank
@@ -360,7 +357,7 @@ function duty_schedule_change_shift_form_submit($form, &$form_state){
     //update the shift
     db_query("UPDATE {duty_schedule_shifts} SET uid='%d' WHERE shift_id = '%d'", $fi['medic'], $shift_info->shift_id  );
     /*Find the next chronological shift in this slot and redirect to changing it*/
-    $next_shift_info = db_fetch_object(db_query("SELECT shift_id FROM {duty_schedule_shifts} WHERE medic_slot=%d AND start_time='%s'",$shift_info->medic_slot, $shift_info->end_time));
+    $next_shift_info = db_fetch_object(db_query("SELECT shift_id FROM {duty_schedule_shifts} WHERE slot_id=%d AND start_time='%s'",$shift_info->slot_id, $shift_info->end_time));
     if($next_shift_info){//if there is a next shift, redirect to changing it
       $form_state['redirect'] = array('duty_schedule/change_shift', 'shift='.($next_shift_info->shift_id) );
     }
@@ -374,7 +371,7 @@ function duty_schedule_change_shift_form_submit($form, &$form_state){
 			'uid' => $fi['secondary_medic'],
 			'start_time' => date( 'Y-m-d H:i:s', $split_time),
 			'end_time' => date( 'Y-m-d H:i:s', $end_time),
-			'medic_slot' => $shift_info->medic_slot
+			'slot_id' => $shift_info->slot_id
 			);
     drupal_write_record('duty_schedule_shifts', $new_record);
     $form_state['redirect'] = array('duty_schedule');
@@ -471,7 +468,7 @@ function duty_schedule_old_duty_results(){
   $start_time = $_GET['start_time'];
   $end_time = $_GET['end_time'];
   //query the datebase
-  $result = db_query("SELECT medic_slot, start_time, end_time \n " .
+  $result = db_query("SELECT slot_id, start_time, end_time \n " .
 		     "FROM {duty_schedule_shifts} \n " .
 		     "WHERE uid=%d AND (start_time>'%s' AND end_time<'%s') \n " .
 		     "ORDER BY start_time \n "
@@ -551,6 +548,132 @@ function duty_schedule_menu(){
 						  'access arguments' => array('access duty_schedule'),
 						  'type' => MENU_CALLBACK
 						  );
+  $items['admin/duty_schedule/slot/'] = array(
+					      'title' => 'Edit slots',
+					      'page callback' => 'duty_schedule_admin_slots',
+					      'access arguments' => array('admin duty_schedule'),
+					      'type' => MENU_CALLBACK
+					      );
+
 
   return $items;
+}
+
+
+/**** ADMINISTRATIVE FEATURES
+
+Everything beyond this point defines administrative features for
+customizing the duty schedule to a particular organization.  For example,
+these functions will define the pages that allow you to create new slots,
+create default times for each of the slots, rename slots, delete slots,
+deactivate slots, etc.
+
+ *******/
+
+
+function duty_schedule_admin_slots() {
+  $header = array(t('Name'), array('data' => t('Operations'), 'colspan' => 2));
+  $result = db_query("SELECT slot_id, display_name FROM {duty_schedule_slots}"); 
+  while( $row = db_fetch_object($result) ) {
+    $edit_default_shifts = l(t('edit default shifts'), 'admin/duty_schedule/default_shifts/'. $result->slot_id);
+    $rows[] = array($result->display_name, l(t('edit role'), 'admin/duty_schedule/slot/'. $result->slot_id), $edit_default_shifts);
+  }
+  $form = duty_schedule_admin_slot_form();
+  $rows[] = array(drupal_render($form['name']), array('data' => drupal_render($form['submit']), 'colspan' => 2));
+
+  $output = drupal_render($form);
+  $output .= theme('table', $header, $rows);
+
+  return $output;
+}
+
+
+function duty_schedule_admin_slot_form(){
+  $slot_id = arg(4); // takes the 4th argument on the drupal path.  e.g. takes 4 from admin/duty_schedule/slot/4
+  if($slot_id){
+    $row = db_fetch_object(db_query("SELECT * FROM {duty_schedule_slots} WHERE slot_id=%d", $slot_id));
+    //display the edit slot form
+    $form['name'] = array(
+			  '#type' => 'textfield',
+			  '#size' => 32,
+			  '#maxlength' => 64,
+			  '#default_value'=> $row->display_name
+			  );
+    $form['status'] = array(
+			    '#type' => 'radios',
+			    '#title' => t('Status'),
+			    '#default_value' => $row->status,
+			    '#options' => array(t('Active'), t('Deactivated')),
+			    );
+    $form['slot_id'] = array(
+			 '#type' => 'value',
+			 '#value' => $slot_id,
+			 );
+    $form['submit'] = array(
+			    '#type' => 'submit',
+			    '#value' => t('Save slot'),
+			    );
+    $form['delete'] = array(
+			    '#type' => 'submit',
+			    '#value' => t('Delete slot'),
+			    );
+
+  }
+  else{
+    $form['name'] = array(
+			  '#type' => 'textfield',
+			  '#size' => 32,
+			  '#maxlength' => 64,
+			  );
+    $form['submit'] = array(
+			    '#type' => 'submit',
+			    '#value' => t('Add slot'),
+			    );
+  }
+  $form['#submit'][] = 'duty_schedule_admin_slot_submit';
+  $form['#validate'][] = 'duty_schedule_admin_slot_validate';
+  
+}
+
+
+function duty_schedule_admin_slot_validate($form, &$form_state){
+  if ($form_state['values']['name']) {
+    //Edit role
+    if ($form_state['values']['op'] == t('Save slot')) {
+      if (db_result(db_query("SELECT COUNT(*) FROM {duty_schedule_slots} WHERE name = '%s' AND slot_id != %d", $form_state['values']['name'], $form_state['values']['slot_id']))) {
+        form_set_error('name', t('The slot name %name already exists. Please choose another role name.', array('%name' => $form_state['values']['name'])));
+      }
+    }
+    //Add role
+    if ($form_state['values']['op'] == t('Add slot')) {
+      //check that there isn't already a slot with that name
+      if (db_result(db_query("SELECT COUNT(*) FROM {duty_schedule_slots} WHERE name = '%s'", $form_state['values']['name']))) {
+	form_set_error('name', t('The slot name %name already exists. Please choose another slot name.', array('%name' => $form_state['values']['name'])));
+      }
+    }
+  }else {
+    form_set_error('name', t('You must specify a valid role name.'));
+  }
+}
+
+
+function duty_schedule_admin_slot_submit($form, &$form_state) {
+  if ($form_state['values']['op'] == t('Save slot')) {
+    db_query("UPDATE {duty_schedule_slots} SET display_name = '%s' WHERE slot_id = %d", $form_state['values']['name'], $form_state['values']['slot_id']);
+    db_query("UPDATE {duty_schedule_slots} SET status = %d WHERE slot_id = %d", $form_state['values']['status'], $form_state['values']['slot_id']);
+    drupal_set_message(t('The slot has been updated.'));
+  }
+  else if ($form_state['values']['op'] == t('Delete slot')) {
+    db_query('DELETE FROM {duty_schedule_slots} WHERE slot_id = %d', $form_state['values']['slot_id']);
+    db_query('DELETE FROM {duty_schedule_shifts} WHERE slot_id = %d', $form_state['values']['slot_id']);
+    db_query('DELETE FROM {duty_schedule_slot_times} WHERE slot_id = %d', $form_state['values']['slot_id']);
+    
+    drupal_set_message(t('The slot and all of its associated shifts have been deleted.'));
+  }
+  else if ($form_state['values']['op'] == t('Add role')) {
+    db_query("INSERT INTO {duty_schedule_slots} (display_name) VALUES ('%s')", $form_state['values']['name']);
+    drupal_set_message(t('The slot has been added.'));
+  }
+  $form_state['redirect'] = 'admin/user/roles';
+  return;
 }
