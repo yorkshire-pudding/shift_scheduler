@@ -54,8 +54,8 @@ function duty_schedule_schema() {
 			      'default'=>''
 				       ),
 		'status' => array(
-			'description' => t('1 - Active, 2 - Deactivated'),
-			'size' => 'small',
+			'description' => t('0 - Active, 1 - Deactivated'),
+			'size' => 'tiny',
 			'type' => 'int',
 			'not null' => FALSE,
 			'unsigned' => TRUE
@@ -88,6 +88,68 @@ function duty_schedule_schema() {
 	);
 	
 	return $schema;
+}
+
+
+function duty_schedule_update_6101(){
+  $ret = array();
+  db_change_field($ret, 'duty_schedule_shifts', 'medic_slot', 'slot_id', array(
+			'description' => t('The position in the duty crew.'),
+			'type' => 'int',
+			'size' => 'tiny',
+			'not null' => TRUE)
+		  );
+  db_add_table($ret, 'duty_schedule_slots', array(
+	'description' => t('Defines the different slots that must be filled in a work day.'),
+	'fields' => array(
+		'slot_id' => array(
+			'description' => t('An arbitrary unique identifier for each slot'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   ),
+		'disply_name' => array(
+			      'description' => t('e.g. Supervisor'),
+			       'type' => 'varchar',
+			      'length' => 255,
+			      'not null' => TRUE,
+			      'default'=>''
+				       ),
+		'status' => array(
+			'description' => t('0 - Active, 0 - Deactivated'),
+			'size' => 'tiny',
+			'type' => 'int',
+			'not null' => FALSE,
+			'unsigned' => TRUE
+				  ),
+			  ),
+	'primary_key' => array('slot_id')
+						  )
+	       );
+  db_add_table($ret, 'duty_schedule_slot_times', array(
+	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
+	'fields' => array(
+		'slot_id' => array(
+			'description' => t('The slot id to which this shift should be added'),
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE
+				   )
+			  ),
+	        'start_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+		),
+		'end_time' => array(
+			'description' => t('The start time for a shift.'),
+			'type' => 'datetime',
+			'not null' => TRUE
+				    ),
+	'primary_key' => array('slot_id')
+						       ) 
+	       );
+
 }
 
 //standard functions to create and destroy
