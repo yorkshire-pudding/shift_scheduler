@@ -535,7 +535,7 @@ function duty_schedule_admin_slots() {
     $result = db_query("SELECT slot_id, display_name FROM {duty_schedule_slots}"); 
     while( $row = db_fetch_object($result) ) {
       $edit_default_shifts = l(t('edit default shifts'), 'admin/settings/duty_schedule/default_shifts/'. $row->slot_id);
-      $rows[] = array($row->display_name, l(t('edit role'), 'admin/settings/duty_schedule/slot/'. $row->slot_id), $edit_default_shifts);
+      $rows[] = array($row->display_name, l(t('edit slot'), 'admin/settings/duty_schedule/slot/'. $row->slot_id), $edit_default_shifts);
     }
   }
   $form = drupal_get_form('duty_schedule_admin_slot_form');
@@ -590,6 +590,7 @@ function duty_schedule_admin_slot_form(){
 			    '#value' => t('Add slot')
 			    );
   }
+
   $form['#submit'][] = 'duty_schedule_admin_slot_submit';
   $form['#validate'][] = 'duty_schedule_admin_slot_validate';
   return $form;
@@ -599,13 +600,13 @@ function duty_schedule_admin_slot_form(){
 
 function duty_schedule_admin_slot_validate($form, &$form_state){
   if ($form_state['values']['name']) {
-    //Edit role
+    //Edit slot
     if ($form_state['values']['op'] == t('Save slot')) {
       if (db_result(db_query("SELECT COUNT(*) FROM {duty_schedule_slots} WHERE display_name = '%s' AND slot_id != %d", $form_state['values']['name'], $form_state['values']['slot_id']))) {
         form_set_error('name', t('The slot name %name already exists. Please choose another role name.', array('%name' => $form_state['values']['name'])));
       }
     }
-    //Add role
+    //Add slot
     if ($form_state['values']['op'] == t('Add slot')) {
       //check that there isn't already a slot with that name
       if (db_result(db_query("SELECT COUNT(*) FROM {duty_schedule_slots} WHERE display_name = '%s'", $form_state['values']['name']))) {
@@ -641,10 +642,100 @@ function duty_schedule_admin_slot_submit($form, &$form_state) {
 
 
 function duty_schedule_admin_default_shifts(){
-  $output = arg(4);
-  return $output;
+  $page_content = drupal_get_form('duty_schedule_admin_default_shifts_form');
+  return $page_content;
 }
 
+function duty_schedule_admin_default_shifts_form(&$form_state){
+  $slot_id = arg(4);
+  $result = db_query("SELECT slot_time_id, start_time, end_time FROM {duty_schedule_slot_times} WHERE slot_id =%d", $slot_id);
+  $form = array();
+  $i =1;
+  while($row = db_fetch_object($result)){
+    $form [$i-1] = array(
+		     '#type' => 'item',
+		     '#title' => t('Defautl Shift ' . $i),
+		     '#tree' => TRUE
+		     );
+    $form[$i-1]['slot_time_id'] = array(
+					'#type' => 'hidden',
+					'#value' => $row->slot_time_id
+					);
+    //TODO: fix mktime calls here to translate from sql datetime to timestamp
+    //or just parse the returned sql string directly
+    $form[$i-1]['start_time'] = array(
+			      '#type' => 'textfield',
+			      '#title' => t('start time'),
+			      '#size' => 10,
+			      '#maxlength' =>4,
+			      '#default_value' => date('Hi', mktime($row->start_time)) 
+			      );
+    $form[$i-1]['end_time'] = array(
+			      '#type' => 'textfield',
+			      '#title' => t('end time'),
+			      '#size' => 10,
+			      '#maxlength' =>4,
+			      '#default_value' => date('Hi', mktime($row->end_time))
+			      );
+    $i = $i+1;
+  }
+  $form['slot_id'] = array(
+			    '#type' => 'hidden',
+			    '#value' => $slot_id
+			    );
+  $form['new_time'] = array(
+		     '#name' => 'new_time',
+		     '#type' => 'item',
+		     '#title' => t('New Time'),
+		     '#description' => t('Fill in times here to create a new default time'),
+		     '#tree' => TRUE
+					      );
+  $form['new_time']['start_time'] = array(
+				    '#type' => 'textfield',
+				    '#title' => t('start time'),
+				    '#size' => 10,
+				    '#maxlength' =>4,
+				    
+				    );
+  $form['new_time']['end_time'] = array(
+				  '#type' => 'textfield',
+				  '#title' => t('end time'),
+				  '#size' => 10,
+				  '#maxlength' =>4,
+				  
+				  );
+  $form['submit'] = array(
+			    '#type' => 'submit',
+			    '#value' => t('Update')
+			    );
+  $form['#submit'][] = 'duty_schedule_admin_default_shifts_submit';
+  $form['#validate'][] = 'duty_schedule_admin_default_shifts_validate';
+  return $form;
+}
+
+function duty_schedule_admin_default_shifts_validate($form, &$form_state){
+}
+
+function duty_schedule_admin_default_shifts_submit($form, &$form_state){
+  $slot_id = (int)$form_state['values']['slot_id'];
+  if(strlen($form_state['values']['new_time']['start_time']) == 4 && strlen($form_state['values']['new_time']['end_time']) == 4){
+    //get the strings for the start and end times from the form
+    $ss = $form_state['values']['new_time']['start_time']; 
+    $es = $form_state['values']['new_time']['end_time']; 
+    //convert strings to seconds after the unix epoch
+    //the day is arbitrarily chosen to be the first day of the unix epoch
+    $start_time = mktime((int) ($ss[0] . $ss[1]), (int)($ss[2] . $ss[3]));
+    $end_time = mktime((int) ($es[0] . $es[1]), (int)($es[2] . $es[3]));
+    $new_record = array(
+			'start_time' => date("Y-m-d H:i:s", $start_time),
+			'end_time' => date("Y-m-d H:i:s", $end_time),
+			'slot_id' => $slot_id
+			);
+    drupal_write_record('duty_schedule_slot_times', $new_record);
+    drupal_set_message(t('New default shift added'));
+  }
+
+}
 
 
 function duty_schedule_menu(){
