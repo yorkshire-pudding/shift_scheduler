@@ -115,9 +115,9 @@ function duty_schedule_update_6101(){
 			'unsigned' => TRUE,
 			'not null' => TRUE
 				   ),
-		'disply_name' => array(
+		'display_name' => array(
 			      'description' => t('e.g. Supervisor'),
-			       'type' => 'varchar',
+			      'type' => 'varchar',
 			      'length' => 255,
 			      'not null' => TRUE,
 			      'default'=>''
