@@ -193,7 +193,6 @@ function duty_schedule_create_days_form($form_state){
 			    '#description' => t('The last date to be created on the duty schedule.')
 			    );
   $form['submit'] = array('#type' => 'submit', '#value' => t('Create days'));
-
   return $form;
 
 }
@@ -205,6 +204,7 @@ Create new days and fill with the defaut shifts
 function duty_schedule_create_days_form_submit($form, &$form_state){
   $result = db_query('SELECT * FROM {duty_schedule_slot_times}');
   //get start date from form
+  //TODO: clean this up to use 'values'
   $sday = $form_state['clicked_button']['#post']['start_date']['day'];
   $smon = $form_state['clicked_button']['#post']['start_date']['month'];
   $syear = $form_state['clicked_button']['#post']['start_date']['year'];
@@ -212,6 +212,7 @@ function duty_schedule_create_days_form_submit($form, &$form_state){
   $emon = $form_state['clicked_button']['#post']['end_date']['month'];
   $eyear = $form_state['clicked_button']['#post']['end_date']['year'];
   $num_days = (mktime(0,0,0,$emon,$eday,$eyear) -  mktime(0,0,0,$smon,$sday,$syear))/(60*60*24)+1;//total number of days being added
+
   while($slot_time = db_fetch_object($result)){
     for($i = 0; $i < $num_days; $i++){
       $start_time = mktime((int)($slot_time->start_time[11].$slot_time->start_time[12]), (int)($slot_time->start_time[14].$slot_time->start_time[15]), 0, $smon, $sday+$i, $syear);
@@ -219,13 +220,24 @@ function duty_schedule_create_days_form_submit($form, &$form_state){
       if($end_time < $start_time){//infer if end time is on the next day
 	$end_time = $end_time + 60*60*24;
       }
+      /*On the first day to be added, check to make sure the shifts to be added
+       aren't already in the database
+      TODO: move this to a validate method
+      Note that this method for checking is not foolproof*/
+      if($i ==0){
+	$redundant = db_fetch_object(db_query("SELECT shift_id FROM {duty_schedule_shifts} WHERE start_time='%s'", date ("Y-m-d H:i:00", $start_time)));
+	if($redundant){
+	  drupal_set_message(t('Creating days failed because the first day you selected has already been created.')); //TODO: change this to form_set_error('start date') after this is moved to a validate method
+	  return;
+	}
+      }
+      
       $new_record = array(
 			 'slot_id' => $slot_time->slot_id,
 			 'start_time' => date ("Y-m-d H:i:00", $start_time),
 			 'end_time' => date ("Y-m-d H:i:00", $end_time)
 			 //uid is purposely left as null so the shift is open
 			 );
-
       drupal_write_record('duty_schedule_shifts', $new_record);
     } 
   }
