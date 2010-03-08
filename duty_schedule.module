@@ -273,7 +273,7 @@ function duty_schedule_change_shift_form(&$form_state){
   //Get a list of medics who are eligible to take this shift
   $options = array();
   $options[0] = ' ';
-  $options_query = "SELECT uid, name FROM {users} WHERE uid > 1 AND status = 1 ORDER BY name";//DESC ensures names appear in alphabetical order //TODO: this will get significantly more complex when we enforce rank
+  $options_query = "SELECT uid, name FROM {users} WHERE uid > 1 AND status = 1 ORDER BY name";
   $options_result = db_query($options_query);
   while( $options_row = db_fetch_object($options_result) ){
     $options[$options_row->uid] = $options_row->name;
@@ -405,7 +405,7 @@ function duty_schedule_old_duty_form(&$form_state){
   //Get a list of all the medics
   $options = array();
   $options[0] = ' ';
-  $options_query = "SELECT uid, name FROM {users} WHERE uid > 1 ORDER BY name";//DESC ensures names appear in alphabetical order //TODO: this will get significantly more complex when we enforce rank
+  $options_query = "SELECT uid, name FROM {users} WHERE uid > 1 ORDER BY name";
   $options_result = db_query($options_query);
   while( $options_row = db_fetch_object($options_result) ){
     $options[$options_row->uid] = $options_row->name;
@@ -668,14 +668,14 @@ function duty_schedule_admin_default_shifts_form(&$form_state){
 			      '#title' => t('start time'),
 			      '#size' => 10,
 			      '#maxlength' =>4,
-			      '#default_value' => date('Hi', mktime($row->start_time)) 
-			      );
+			      '#default_value' =>  ($row->start_time[11] . $row->start_time[12] . $row->start_time[14] . $row->start_time[15])
+				      );
     $form[$i-1]['end_time'] = array(
 			      '#type' => 'textfield',
 			      '#title' => t('end time'),
 			      '#size' => 10,
 			      '#maxlength' =>4,
-			      '#default_value' => date('Hi', mktime($row->end_time))
+			      '#default_value' => ($row->end_time[11] . $row->end_time[12] . $row->end_time[14] . $row->end_time[15])
 			      );
     $i = $i+1;
   }
