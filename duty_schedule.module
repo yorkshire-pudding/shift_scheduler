@@ -197,61 +197,13 @@ function duty_schedule_create_days_form($form_state){
   return $form;
 
 }
+
+
 /*
- Fill the date ranges specified by the form with open shifts
- from 0000-0900, 0900-1300, 1300-1700, 1700-2100, and 2100-0000
- in all 3 slots.  Called automatically by drupal after the submit
- button from duty_schedule_create_days_form is pressed
+Create new days and fill with the defaut shifts
 */
 function duty_schedule_create_days_form_submit($form, &$form_state){
-  $start_time = mktime(9,0,0, $form_state['clicked_button']['#post']['start_date']['month'], $form_state['clicked_button']['#post']['start_date']['day'], $form_state['clicked_button']['#post']['start_date']['year']); /*9am on the first day requested*/
-  $end_date = mktime(0,0,0, $form_state['clicked_button']['#post']['end_date']['month'], $form_state['clicked_button']['#post']['end_date']['day']+1, $form_state['clicked_button']['#post']['end_date']['year']);//midnight on the day after the end date.  note that we add 1 so that we actually go through the end date, not up to it								      
-
-  $end_time = 0;//the end time for a particular shift
-  
-  //check to see if there are shifts with the given start_time already in the database
-  //if so, we're trying to create redundant shifts, so we should return without doing anyting
-  //TODO: This still doesn't absolutely protect against people adding redundant days
-  $redundant = db_fetch_object(db_query("SELECT shift_id FROM {duty_schedule_shifts} WHERE start_time = '%s'", date ("Y-m-d H:i:s", $start_time)));
-  if($redundant){
-    drupal_set_message(t('Creating days failed because the first day you selected has already been created.'));
-    return;
-  }
-
-  //loop over all of the times in the range creating open shifts
-  while($start_time < $end_date){
-    //generate an appropriate end time corresponding to EST's standard shifts
-    if( date('H', $start_time) == 21 ){//start time is 9pm (i.e. last shift of the day), make it a 12 hour shift (to 9am)
-      $end_time = $start_time + 60*60*12; 
-    }
-    else{
-      $end_time = $start_time + 60*60*4; //otherwise, standard 4 hour shifts
-    }
-    //create an open shift
-    for($slot =1; $slot <= 3; $slot++){ 
-      $new_record = array(
-			  'start_time' => date ("Y-m-d H:i:s", $start_time),//note: the output from this will be in local time
-			  'end_time' => date( "Y-m-d H:i:s", $end_time ),
-			  'slot_id' => $slot,
-			  );//UID is purposely left as NULL since this will be read as an open shift.  shift_id is presumably filled in automatically
-      drupal_write_record('duty_schedule_shifts', $new_record);		
-    }
-		
-    $start_time = $end_time;//iterate to next shift
-  }
-	
-  $form_state['redirect'] = array('duty_schedule');
-  
-	
-}
-
-
-
-/*
- A draft of a more expensible version of duty_schedule_create_days_form_submit
-*/
-function duty_schedule_draft_create_days_form_submit($form, &$form_state){
-  $result = db_query('SELECT * FROM duty_schedule_slot_times');
+  $result = db_query('SELECT * FROM {duty_schedule_slot_times}');
   //get start date from form
   $sday = $form_state['clicked_button']['#post']['start_date']['day'];
   $smon = $form_state['clicked_button']['#post']['start_date']['month'];
@@ -259,14 +211,25 @@ function duty_schedule_draft_create_days_form_submit($form, &$form_state){
   $eday = $form_state['clicked_button']['#post']['end_date']['day'];
   $emon = $form_state['clicked_button']['#post']['end_date']['month'];
   $eyear = $form_state['clicked_button']['#post']['end_date']['year'];
-  $num_days = (mktime(0,0,0,$emon,$eday,$eyear) -  mktime(0,0,0,$smon,$sday,$syear))/(60*60*24);//total number of days being added
+  $num_days = (mktime(0,0,0,$emon,$eday,$eyear) -  mktime(0,0,0,$smon,$sday,$syear))/(60*60*24)+1;//total number of days being added
   while($slot_time = db_fetch_object($result)){
-    //TODO: fill this in.  iterate over all the days to be added
+    for($i = 0; $i < $num_days; $i++){
+      $start_time = mktime((int)($slot_time->start_time[11].$slot_time->start_time[12]), (int)($slot_time->start_time[14].$slot_time->start_time[15]), 0, $smon, $sday+$i, $syear);
+      $end_time = mktime((int)($slot_time->end_time[11].$slot_time->end_time[12]), (int)($slot_time->end_time[14].$slot_time->end_time[15]), 0, $smon, $sday+$i, $syear);
+      if($end_time < $start_time){//infer if end time is on the next day
+	$end_time = $end_time + 60*60*24;
+      }
+      $new_record = array(
+			 'slot_id' => $slot_time->slot_id,
+			 'start_time' => date ("Y-m-d H:i:00", $start_time),
+			 'end_time' => date ("Y-m-d H:i:00", $end_time)
+			 //uid is purposely left as null so the shift is open
+			 );
+
+      drupal_write_record('duty_schedule_shifts', $new_record);
+    } 
   }
-  
   $form_state['redirect'] = array('duty_schedule');
-  
-	
 }
 
 //Defines the appearance of the add_days page.
@@ -780,8 +743,8 @@ function duty_schedule_admin_default_shifts_submit($form, &$form_state){
     $start_time = mktime((int) ($ss[0] . $ss[1]), (int)($ss[2] . $ss[3]));
     $end_time = mktime((int) ($es[0] . $es[1]), (int)($es[2] . $es[3]));
     db_query("UPDATE {duty_schedule_slot_times} SET start_time='%s', end_time='%s' WHERE slot_time_id = %d", 
-	     date("Y-m-d H:i:s", $start_time), 
-	     date("Y-m-d H:i:s", $end_time), 
+	     date("Y-m-d H:i:00", $start_time), 
+	     date("Y-m-d H:i:00", $end_time), 
 	     $slot_time_id);
   }
   //Add new default shift
@@ -794,8 +757,8 @@ function duty_schedule_admin_default_shifts_submit($form, &$form_state){
     $start_time = mktime((int) ($ss[0] . $ss[1]), (int)($ss[2] . $ss[3]));
     $end_time = mktime((int) ($es[0] . $es[1]), (int)($es[2] . $es[3]));
     $new_record = array(
-			'start_time' => date("Y-m-d H:i:s", $start_time),
-			'end_time' => date("Y-m-d H:i:s", $end_time),
+			'start_time' => date("Y-m-d H:i:00", $start_time),
+			'end_time' => date("Y-m-d H:i:00", $end_time),
 			'slot_id' => $slot_id
 			);
     drupal_write_record('duty_schedule_slot_times', $new_record);
