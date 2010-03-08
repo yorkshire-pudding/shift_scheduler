@@ -654,7 +654,7 @@ function duty_schedule_admin_default_shifts_form(&$form_state){
   while($row = db_fetch_object($result)){
     $form [$i-1] = array(
 		     '#type' => 'item',
-		     '#title' => t('Defautl Shift ' . $i),
+		     '#title' => t('Default Shift ' . $i),
 		     '#tree' => TRUE
 		     );
     $form[$i-1]['slot_time_id'] = array(
@@ -683,6 +683,10 @@ function duty_schedule_admin_default_shifts_form(&$form_state){
 			    '#type' => 'hidden',
 			    '#value' => $slot_id
 			    );
+  $form['num_defined'] = array( //pass the number of slots that already exist to the form-processing functions
+			       '#type' => 'hidden',
+			       '#value' => $i-1
+			       );
   $form['new_time'] = array(
 		     '#name' => 'new_time',
 		     '#type' => 'item',
@@ -714,13 +718,43 @@ function duty_schedule_admin_default_shifts_form(&$form_state){
 }
 
 function duty_schedule_admin_default_shifts_validate($form, &$form_state){
+  //TODO: check to make sure the start time is before the end time
+  for($i=0; $i<(int)$form_state['values']['num_defined']; $i++){
+    $st = $form_state['values'][$i]['start_time'];
+    $et = $form_state['values'][$i]['end_time'];
+    if( !((strlen($st) == strlen($et)) && (strlen($st) == 4 || strlen($st) ==0))){
+      form_set_error($i, t('Both the start time and the end time must either be blank or full 4-number military times (e.g. 0900 or 1354)')); 
+    }
+  }
+  //Check that either neither or both of the times for a new slot are filled in
+  if(strlen($form_state['values']['new_time']['start_time']) == 4 ^ 
+     strlen($form_state['values']['new_time']['end_time']) == 4){
+    form_set_error('new_time',t('To add a new default shift, you must enter values for both its start and end times'));
+  }
 }
 
 function duty_schedule_admin_default_shifts_submit($form, &$form_state){
   $slot_id = (int)$form_state['values']['slot_id'];
-  if(strlen($form_state['values']['new_time']['start_time']) == 4 && strlen($form_state['values']['new_time']['end_time']) == 4){
+  //update previously defined times
+  for($i =0; $i < (int)$form_state['values']['num_defined']; $i++){
+    $slot_time_id = (int)($form_state['values'][$i]['slot_time_id']);
+    $ss = $form_state['values'][$i]['start_time'];
+    $es = $form_state['values'][$i]['end_time'];
+    //If both the begin and end time are blanked, delete the default shift
+    if((strlen($ss)==0) && (strlen($es)==0) ){
+      
+    }
+    $start_time = mktime((int) ($ss[0] . $ss[1]), (int)($ss[2] . $ss[3]));
+    $end_time = mktime((int) ($es[0] . $es[1]), (int)($es[2] . $es[3]));
+    db_query("UPDATE {duty_schedule_slot_times} SET start_time='%s', end_time='%s' WHERE slot_time_id = %d", 
+	     date("Y-m-d H:i:s", $start_time), 
+	     date("Y-m-d H:i:s", $end_time), 
+	     $slot_time_id);
+  }
+  //Add new default shift
+  if(strlen($form_state['values']['new_time']['start_time']) == 4 && strlen($form_state['values']['new_time']['end_time']) == 4){ //check that both begin and end time of new shift are filled in
     //get the strings for the start and end times from the form
-    $ss = $form_state['values']['new_time']['start_time']; 
+    $ss = $form_state['values']['new_time']['start_time']; //ss=start string
     $es = $form_state['values']['new_time']['end_time']; 
     //convert strings to seconds after the unix epoch
     //the day is arbitrarily chosen to be the first day of the unix epoch
