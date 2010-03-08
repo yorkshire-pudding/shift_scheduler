@@ -821,6 +821,7 @@ function duty_schedule_menu(){
 						  'access arguments' => array('access duty_schedule'),
 						  'type' => MENU_CALLBACK
 						  );
+  //TODO: find a way to get the following as a normal menu item 
   $items['admin/settings/duty_schedule']= array(
 						'title' => 'Duty Schedule',
 						'access arguemnts' => array('administer duty_schedule'),
