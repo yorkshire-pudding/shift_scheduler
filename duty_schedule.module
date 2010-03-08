@@ -651,7 +651,8 @@ function duty_schedule_admin_default_shifts_form(&$form_state){
   $result = db_query("SELECT slot_time_id, start_time, end_time FROM {duty_schedule_slot_times} WHERE slot_id =%d", $slot_id);
   $form = array();
   $instructions = 'Times should be in military format (e.g. 0800, 1234).\n'. 
-    'To add a shift, fill in both the start time and the end time under New Shift\n' . 
+    'To add a shift, fill in both the start time and the end time under New Shift\n' .
+    'If the end time is before the start time, then the end time is taken to be on the following day' .
     'To delete a shift, delete both the start time and end time of that shift.';
   $form['instructions'] = array(
 				'#type' => 'item',
@@ -726,7 +727,6 @@ function duty_schedule_admin_default_shifts_form(&$form_state){
 }
 
 function duty_schedule_admin_default_shifts_validate($form, &$form_state){
-  //TODO: check to make sure the start time is before the end time
   for($i=0; $i<(int)$form_state['values']['num_defined']; $i++){
     $st = $form_state['values'][$i]['start_time'];
     $et = $form_state['values'][$i]['end_time'];
