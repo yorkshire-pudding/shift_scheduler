@@ -27,10 +27,10 @@ function duty_schedule_perm(){
  falls somewhere on the day in which the shifts occur
  write out a new row in the order DATE MEDIC_1_CELL, MEDIC_2_CELL, MEDIC_3_CELL
 */
-function write_date_row(&$page_content, $medic_cells, $timestamp){
+function write_date_row(&$page_content, $medic_cells, $timestamp, $slot_count){
   $page_content .= '<tr> <td valign="center" class="table-label">';
   $page_content .='<b>' . date('l n/j/Y', $timestamp) . '</b> </td>' ;
-  for($i = 0; $i<3 ; $i++) {
+  for($i = 0; $i< $slot_count ; $i++) {
     $page_content .= '<td>' . $medic_cells[$i] . '</ td>';
   }
   $page_content .= '</tr>';
@@ -115,22 +115,25 @@ function duty_schedule_schedule(){
   $page_content .= '<table class="body-table"> 
 		<tbody>
 			<tr>
-				<th valign="top" class="table-label"> Date </th>
-				<th valign="top"> Medic 1 </th>
-				<th valign="top"> Medic 2 </th>
-				<th valign="top"> Medic 3 </th>
-			</tr> ';//open the table html tag and add table headers
+				<th valign="top" class="table-label"> Date </th>'; //open the table html tag and add table headers
+  $slots_result = db_query('SELECT slot_id, display_name FROM {duty_schedule_slots}');
+  $slot_count =0;
+  while($slot_row = db_fetch_object($slots_result)){
+    $slot_count++;
+    $page_content .= '<th valign="top">'. $slot_row->display_name .'</th>';
+  }
+  $page_content .= '</tr>';
 	
   $medic_cells = array();
-  for($i =0; $i<3; $i++){//init $medic_cells
+  for($i =0; $i<$slot_count; $i++){//init $medic_cells
     $medic_cells[$i] = '';
   }
   while( $row = db_fetch_object($queryResult)) {
     $has_content = TRUE;
-    $start_time_t = strtotime($row->start_time);
+    $start_time_t = strtotime($row->start_time);//TODO: replace manual parsing of times elsewhere with strtotime
     $end_time_t = strtotime($row->end_time);
     if($start_time_t > $midnight){//a new day -> write the row and reset the variables appropriately
-      write_date_row($page_content, $medic_cells, $midnight-10);
+      write_date_row($page_content, $medic_cells, $midnight-10, $slot_count);
       $midnight = mktime(0,0,0,date('n',$start_time_t), date('j',$start_time_t)+1, date('Y',$start_time_t) ); //move $midnight to the midnight after the start time
       for($i =0; $i<3; $i++){//reset medic cells
 	$medic_cells[$i] = '';
@@ -163,7 +166,7 @@ function duty_schedule_schedule(){
     
     
   }
-  write_date_row($page_content, $medic_cells, $midnight-10);//write the last day
+  write_date_row($page_content, $medic_cells, $midnight-10, $slot_count);//write the last day
   $page_content .= '</tbody> </table>';
 
   //display something if there is no content on the page
