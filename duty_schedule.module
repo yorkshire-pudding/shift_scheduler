@@ -245,6 +245,30 @@ function duty_schedule_create_days_form_submit($form, &$form_state){
 	
 }
 
+
+
+/*
+ A draft of a more expensible version of duty_schedule_create_days_form_submit
+*/
+function duty_schedule_draft_create_days_form_submit($form, &$form_state){
+  $result = db_query('SELECT * FROM duty_schedule_slot_times');
+  //get start date from form
+  $sday = $form_state['clicked_button']['#post']['start_date']['day'];
+  $smon = $form_state['clicked_button']['#post']['start_date']['month'];
+  $syear = $form_state['clicked_button']['#post']['start_date']['year'];
+  $eday = $form_state['clicked_button']['#post']['end_date']['day'];
+  $emon = $form_state['clicked_button']['#post']['end_date']['month'];
+  $eyear = $form_state['clicked_button']['#post']['end_date']['year'];
+  $num_days = (mktime(0,0,0,$emon,$eday,$eyear) -  mktime(0,0,0,$smon,$sday,$syear))/(60*60*24);//total number of days being added
+  while($slot_time = db_fetch_object($result)){
+    //TODO: fill this in.  iterate over all the days to be added
+  }
+  
+  $form_state['redirect'] = array('duty_schedule');
+  
+	
+}
+
 //Defines the appearance of the add_days page.
 //Only used as a callback in duty_schedule_menu
 function duty_schedule_add_days(){
@@ -751,6 +775,7 @@ function duty_schedule_admin_default_shifts_submit($form, &$form_state){
     //If both the begin and end time are blanked, delete the default shift
     if((strlen($ss)==0) && (strlen($es)==0) ){
       db_query('DELETE FROM {duty_schedule_slot_times} WHERE slot_time_id=%d', $slot_time_id);
+      drupal_set_message(t('Default shift was deleted'));
     }
     $start_time = mktime((int) ($ss[0] . $ss[1]), (int)($ss[2] . $ss[3]));
     $end_time = mktime((int) ($es[0] . $es[1]), (int)($es[2] . $es[3]));
