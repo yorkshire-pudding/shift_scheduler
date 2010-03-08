@@ -650,6 +650,14 @@ function duty_schedule_admin_default_shifts_form(&$form_state){
   $slot_id = arg(4);
   $result = db_query("SELECT slot_time_id, start_time, end_time FROM {duty_schedule_slot_times} WHERE slot_id =%d", $slot_id);
   $form = array();
+  $instructions = 'Times should be in military format (e.g. 0800, 1234).\n'. 
+    'To add a shift, fill in both the start time and the end time under New Shift\n' . 
+    'To delete a shift, delete both the start time and end time of that shift.';
+  $form['instructions'] = array(
+				'#type' => 'item',
+				'#title' => t('Instructions'),
+				'#description' => t($instructions)
+				);
   $i =1;
   while($row = db_fetch_object($result)){
     $form [$i-1] = array(
