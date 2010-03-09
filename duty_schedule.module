@@ -861,7 +861,8 @@ function duty_schedule_menu(){
   //TODO: find a way to get the following as a normal menu item 
   $items['admin/settings/duty_schedule']= array(
 						'title' => 'Duty Schedule',
-						'access arguemnts' => array('administer duty_schedule'),
+						'description' => t('Administer the slots and default shifts on the shift schedule.'),
+						'access arguemnts' => array('administer site configuration', 'administer duty_schedule'),
 						'type' => MENU_NORMAL_ITEM,
 						'page callback' => 'duty_schedule_admin_slots',
 						);
