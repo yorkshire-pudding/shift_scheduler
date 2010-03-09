@@ -6,7 +6,7 @@
    * @return help text for the path
    */
 function duty_schedule_help($path, $arg) {
-  $output = '';  //declare your output variable
+  $output = '';
   switch ($path) {
   case "admin/help#duty_schedule":
     $output = '<p>'.  t("Displays the duty schedule managed by shift_scheduler") .'</p>';
@@ -825,7 +825,9 @@ function duty_schedule_admin_default_shifts_submit($form, &$form_state){
 
 }
 
-
+/*
+Implementaiton of hook_menu
+ */
 function duty_schedule_menu(){
   $items = array();
   $items['duty_schedule'] = array(
