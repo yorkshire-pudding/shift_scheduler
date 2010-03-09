@@ -259,7 +259,7 @@ function duty_schedule_create_days_form_submit($form, &$form_state){
       /*On the first day to be added, check to make sure the shifts to be added
        aren't already in the database
       TODO: move this to a validate method
-      Note that this method for checking is not foolproof*/
+      Note that this method for checking is not foolproof if the default shifts are changed between days being added*/
       if($i ==0){
 	$redundant = db_fetch_object(db_query("SELECT shift_id FROM {duty_schedule_shifts} WHERE start_time='%s'", date ("Y-m-d H:i:00", $start_time)));
 	if($redundant){
@@ -279,8 +279,9 @@ function duty_schedule_create_days_form_submit($form, &$form_state){
   $form_state['redirect'] = array('duty_schedule');
 }
 
-//Defines the appearance of the add_days page.
-//Only used as a callback in duty_schedule_menu
+/*Defines the appearance of the add_days page.
+Only used as a callback in duty_schedule_menu
+*/
 function duty_schedule_add_days(){
   return drupal_get_form('duty_schedule_create_days_form');//All we want on the page is the form, so we just automatically generate it using the standard drupal methods and return it.
 }
@@ -288,22 +289,15 @@ function duty_schedule_add_days(){
 
 /*
 Define the appearance of the form on the change shift page
+Use this form by adding the return value of drupal_get_form('duty_schedule_create_days_form')
+to your page content.
+@param form_state Provided by drupal core
 */
 function duty_schedule_change_shift_form(&$form_state){
-  
   $shift_id =  $_GET['shift'];
   //Get information about the shift that we're editing
   $shift_query_result = db_query("SELECT uid, slot_id, start_time FROM {duty_schedule_shifts} WHERE shift_id = '%d' ", $shift_id);
   $shift_info = db_fetch_object($shift_query_result);
-
-  /* TODO: enforce assigning medics to slots by rank
-  //Figure out which fid's correspond to which profile values
-  $first_name_object = db_fetch_object(db_query("SELECT fid WHERE name = '%s' ", 'profile_first_name'));
-  $first_name_field = $first_name_object->fid;
-  $last_name_object = db_fetch_object(db_query("SELECT fid WHERE name = '%s' ", 'profile__name'));
-  $last_name_field = $last_object->fid;
-  */
-
   //Get a list of medics who are eligible to take this shift
   $options = array();
   $options[0] = ' ';
@@ -349,6 +343,7 @@ function duty_schedule_change_shift_form(&$form_state){
 			  '#value' => t('Change shift'), 
 			  '#weight' => 10,
 			  );
+  $form['#submit'][]= 'duty_schedule_change_shift_form_submit';
   
   return $form;
 }
@@ -357,7 +352,7 @@ function duty_schedule_change_shift_form(&$form_state){
 Process the change shift form after it is submitted
  */
 function duty_schedule_change_shift_form_submit($form, &$form_state){
-  $fi = $form_state['clicked_button']['#post'];/* fi = "form_info */
+  $fi = $form_state['values'];/* fi = "form_info */
   
   //Get information about the shift that we're editing
   $shift_id =  (int) $fi['shift_id'];
