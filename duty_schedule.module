@@ -30,7 +30,7 @@ Used as a subroutine to duty_schedule_schedule()
 @param timestamp A timestamp that occurs sometime on the day to be written.
 @param slot_count The number of slots to be written
 */
-function write_date_row(&$page_content, $slot_cells, $timestamp, $slot_count){
+function _write_date_row(&$page_content, $slot_cells, $timestamp, $slot_count){
   $page_content .= '<tr> <td valign="center" class="table-label">';
   $page_content .='<b>' . date('l n/j/Y', $timestamp) . '</b> </td>' ;
   for($i = 0; $i< $slot_count ; $i++) {
@@ -138,7 +138,7 @@ function duty_schedule_schedule(){
     $start_time_t = strtotime($row->start_time);//TODO: replace manual parsing of times elsewhere with strtotime
     $end_time_t = strtotime($row->end_time);
     if($start_time_t > $midnight){//a new day -> write the row and reset the variables appropriately
-      write_date_row($page_content, $medic_cells, $midnight-10, $slot_count);
+      _write_date_row($page_content, $medic_cells, $midnight-10, $slot_count);
       $midnight = mktime(0,0,0,date('n',$start_time_t), date('j',$start_time_t)+1, date('Y',$start_time_t) ); //move $midnight to the midnight after the start time
       for($i =0; $i<3; $i++){//reset medic cells
 	$medic_cells[$i] = '';
@@ -171,7 +171,7 @@ function duty_schedule_schedule(){
     
     
   }
-  write_date_row($page_content, $medic_cells, $midnight-10, $slot_count);//write the last day
+  _write_date_row($page_content, $medic_cells, $midnight-10, $slot_count);//write the last day
   $page_content .= '</tbody> </table>';
 
   //display something if there is no content on the page
