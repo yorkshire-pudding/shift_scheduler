@@ -350,7 +350,15 @@ function duty_schedule_change_shift_form(&$form_state){
 
 /*
 Process the change shift form after it is submitted
- */
+This should not be called directly.  Instead, it is called by
+the drupal core because we specify:
+$form['#submit'][]= 'duty_schedule_change_shift_form_submit'
+In duty_schedule_change_shift_form
+
+@param form Provided by the drupal core
+@para form_state Provided by the drupal core.
+*/
+
 function duty_schedule_change_shift_form_submit($form, &$form_state){
   $fi = $form_state['values'];/* fi = "form_info */
   
@@ -381,8 +389,8 @@ function duty_schedule_change_shift_form_submit($form, &$form_state){
   }
   $split = $split && ($start_time < $split_time  && $split_time < $end_time);//definitive check if a split has occurred
 
-  //simple case: no split
-  if(!($split)){
+
+  if(!($split)){  //simple case: no split
     //update the shift
     db_query("UPDATE {duty_schedule_shifts} SET uid='%d' WHERE shift_id = '%d'", $fi['medic'], $shift_info->shift_id  );
     /*Find the next chronological shift in this slot and redirect to changing it*/
@@ -410,7 +418,9 @@ function duty_schedule_change_shift_form_submit($form, &$form_state){
 }
 
 /*
-Define the appearance of the Change shift page
+Define the appearance of the change shift page.
+Determines which shift should be edited from the
+URL by $_GET['shift']
  */
 function duty_schedule_change_shift(){
   //get the time and date of the shift
@@ -429,7 +439,12 @@ function duty_schedule_change_shift(){
   
 }
 
-
+/*
+Define the appearance of the form on the old_duty
+Use this form by adding the return value of drupal_get_form('duty_schedule_old_duty_form')
+to your page content.
+@param form_state Provided by drupal core
+*/
 function duty_schedule_old_duty_form(&$form_state){
   //Get a list of all the medics
   $options = array();
@@ -468,12 +483,13 @@ function duty_schedule_old_duty_form(&$form_state){
 			   '#type' =>'submit',
 			   '#value'=>t('Submit')
 			   );
+  $form['#submit'][] ='duty_schedule_old_duty_form_submit';
   return $form;
 }
 
+
 function duty_schedule_old_duty_form_submit($form, &$form_state){
-  
-  $fi = $form_state['clicked_button']['#post'];/*fi = form info*/
+  $fi = $form_state['values'];/*fi = form info*/
   $start_time = mktime(0,0,0, $fi['start_date']['month'], $fi['start_date']['day'], $fi['start_date']['year']);
   $end_time = mktime(0,0,0, $fi['end_date']['month'], $fi['end_date']['day'], $fi['end_date']['year']);
   $form_state['redirect'] = array('duty_schedule/old_duty_results', 'uid=' . $fi['medic'] .'&' . 'start_time='. $start_time . '&' . 'end_time='.$end_time );
