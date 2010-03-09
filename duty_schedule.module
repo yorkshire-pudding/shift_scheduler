@@ -55,14 +55,16 @@ function duty_schedule_old_schedule_form(){
 			     '#default_value' => $default
 			     );
   $form['submit'] = array('#type' => 'submit', '#value' => t('See old schedule'));  
+  $form['#submit'][] = 'duty_schedule_old_schedule_form_submit';
   return $form;
 
   
 }
 
 function duty_schedule_old_schedule_form_submit($form, &$form_state){
-  $fi = $form_state['clicked_button']['#post'];/* fi = "form_info */
-  $form_state['redirect']= array('duty_schedule', 'sday='. $fi['start_date']['day'] . '&'. 'smon=' . $fi['start_date']['month'] . '&' . 'syear='. $fi['start_date']['year']  );
+  //  dvr($form_state);
+  $fi = $form_state['values']['start_date'];/* fi = "form_info */
+  $form_state['redirect']= array('duty_schedule', 'sday='. $fi['day'] . '&'. 'smon=' . $fi['month'] . '&' . 'syear='. $fi['year']  );
   
 }
 
@@ -205,7 +207,7 @@ function duty_schedule_create_days_form($form_state){
 Create new days and fill with the defaut shifts
 */
 function duty_schedule_create_days_form_submit($form, &$form_state){
-  $result = db_query('SELECT * FROM {duty_schedule_slot_times}');//TODO: modify to check for active slots only
+  $result = db_query('SELECT * FROM {duty_schedule_slot_times}');//TODO: modify to check for active slots only (efficiency only, hack works fine now)
   //get start date from form
   //TODO: clean this up to use 'values'
   $sday = $form_state['clicked_button']['#post']['start_date']['day'];
