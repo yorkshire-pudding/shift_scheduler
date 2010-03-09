@@ -16,22 +16,25 @@ function duty_schedule_help($path, $arg) {
 }// function duty_schedule_help
 
 
-//Core drupal hook.  Defines the relevant permissions
-//for the duty_schedule module
+/*Core drupal hook.  Defines the relevant permissions
+ for the duty_schedule module*/
 function duty_schedule_perm(){
   return array('access duty_schedule','edit duty_schedule', 'administer duty_schedule');
 
 }
 /*
- Given cells representing the 1,2, and 3 shifts and a timestamp that
- falls somewhere on the day in which the shifts occur
- write out a new row in the order DATE MEDIC_1_CELL, MEDIC_2_CELL, MEDIC_3_CELL
+Write out a table row representing a days worth of shifts.
+Used as a subroutine to duty_schedule_schedule()
+@param page_content The page_content so far, to which the table row will be appended
+@param slot_cells An array, of strings representing the content that should be written in for each slot.
+@param timestamp A timestamp that occurs sometime on the day to be written.
+@param slot_count The number of slots to be written
 */
-function write_date_row(&$page_content, $medic_cells, $timestamp, $slot_count){
+function write_date_row(&$page_content, $slot_cells, $timestamp, $slot_count){
   $page_content .= '<tr> <td valign="center" class="table-label">';
   $page_content .='<b>' . date('l n/j/Y', $timestamp) . '</b> </td>' ;
   for($i = 0; $i< $slot_count ; $i++) {
-    $page_content .= '<td>' . $medic_cells[$i] . '</ td>';
+    $page_content .= '<td>' . $slot_cells[$i] . '</ td>';
   }
   $page_content .= '</tr>';
 
