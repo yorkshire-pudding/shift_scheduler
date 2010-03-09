@@ -40,6 +40,13 @@ function _write_date_row(&$page_content, $slot_cells, $timestamp, $slot_count){
 
 }
 
+
+/*
+Define a form to display old duty schedules.
+The form currently allows the user to input a start date
+and the duty schedule is displayed for every day after that
+start date.
+ */
 function duty_schedule_old_schedule_form(){
   //if you're already looking at an old schedule, make the form default to the first day already visible
   if($_GET['sday'] && $_GET['smon'] && $_GET['syear']){
@@ -64,34 +71,49 @@ function duty_schedule_old_schedule_form(){
   
 }
 
+/*
+Takes 
+ */
 function duty_schedule_old_schedule_form_submit($form, &$form_state){
-  //  dvr($form_state);
   $fi = $form_state['values']['start_date'];/* fi = "form_info */
   $form_state['redirect']= array('duty_schedule', 'sday='. $fi['day'] . '&'. 'smon=' . $fi['month'] . '&' . 'syear='. $fi['year']  );
   
 }
 
+/*
+Given a user id, return the name of the user formatted as the
+initial of the first name followed by the last name, as in M. Strother.
+If the profile module is not installed, or a user has not specified
+his first and last name, just return the user name.
+@param uid The user id number of the person whose formatted name will be returned
+ */
 function _schedule_format_name($uid){
   if(module_exists('profile')){
     $last_name_row = db_fetch_object(db_query( "SELECT value FROM {profile_values} WHERE fid=%d AND uid=%d", 2, $uid)); //get the last name
-    $last_name = $last_name_row->value;
     $first_name_row = db_fetch_object(db_query( "SELECT value FROM {profile_values} WHERE fid=%d AND uid=%d", 1, $uid));
-    $first_name = $first_name_row->value;
-    $first_initial = strtoupper(substr($first_name,0,1));
-    $last_initial = strtoupper(substr($last_name,0,1));
-    $last_name = $last_initial . substr($last_name, 1, strlen($last_name)-1);
-    $display_name = $first_initial ."." . $last_name;
+    if($first_name_row && $last_name_row){
+      $last_name = $last_name_row->value;
+      $first_name = $first_name_row->value;
+      $first_initial = strtoupper(substr($first_name,0,1));
+      $last_initial = strtoupper(substr($last_name,0,1));
+      $last_name = $last_initial . substr($last_name, 1, strlen($last_name)-1);
+      $display_name = $first_initial ."." . $last_name;
+    }
+    else{
+      $medic_name_result = db_fetch_object(db_query("SELECT name FROM {users} WHERE uid = '%d'", $uid));
+      $display_name = $medic_name_result->name;
+    }
   }
   else{
     $medic_name_result = db_fetch_object(db_query("SELECT name FROM {users} WHERE uid = '%d'", $uid));
     $display_name = $medic_name_result->name;
   }
-
   return $display_name;
 }
 
-//Defines how the duty schedule should be displayed
-//Only used as a callback in duty_schedule_menu
+/*Defines how the duty schedule should be displayed
+Only used as a callback in duty_schedule_menu
+*/
 function duty_schedule_schedule(){
   $page_content = '';
   $page_content .= drupal_get_form('duty_schedule_old_schedule_form');
@@ -99,7 +121,6 @@ function duty_schedule_schedule(){
   global $user; //get access to global variable representing the current user
   
   //get the shifts to display
-  
   date_default_timezone_set('CST');
   $today = getdate();
   if($_GET['sday'] && $_GET['smon'] && $_GET['syear']){//if specified in the URL, specify the time on which to start looking for shifts
@@ -121,6 +142,7 @@ function duty_schedule_schedule(){
 		<tbody>
 			<tr>
 				<th valign="top" class="table-label"> Date </th>'; //open the table html tag and add table headers
+  //TODO: use drupal calls to make the table
   $slots_result = db_query('SELECT slot_id, display_name FROM {duty_schedule_slots} WHERE status=0');//active slots only
   $slot_count =0;
   while($slot_row = db_fetch_object($slots_result)){
@@ -223,7 +245,7 @@ function duty_schedule_create_days_form_submit($form, &$form_state){
 
   while($slot_time = db_fetch_object($result)){
     //TODO: delete the following and replace with a select/join in original query
-    //this check that the slot_time is for a slot that is active
+    //check that the slot_time is for a slot that is active
     $slot_row = db_fetch_object(db_query('SELECT status FROM {duty_schedule_slots} WHERE slot_id=%d', $slot_time->slot_id));
     if($slot_row->status!=0){
       continue;
@@ -251,7 +273,6 @@ function duty_schedule_create_days_form_submit($form, &$form_state){
 			 'end_time' => date ("Y-m-d H:i:00", $end_time)
 			 //uid is purposely left as null so the shift is open
 			 );
-      dvr($new_record);
       drupal_write_record('duty_schedule_shifts', $new_record);
     } 
   }
