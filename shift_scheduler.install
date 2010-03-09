@@ -1,8 +1,8 @@
 <?php
 // $Id$
 
-function duty_schedule_schema() {
-	$schema['duty_schedule_shifts'] = array(
+function shift_scheduler_schema() {
+	$schema['shift_scheduler_shifts'] = array(
 	'description' => t('Holds the data for all the shifts taken by members of EST.'),
 	'fields' => array(
 		'shift_id' => array(
@@ -28,7 +28,7 @@ function duty_schedule_schema() {
 			'not null' => TRUE
 		),
 		'uid' => array(
-			'description' => t('A uid pointing to the medic that took the shift'),
+			'description' => t('A uid pointing to the volunteer that took the shift'),
 			'type' => 'int',
 			'not null' => FALSE,
 			'unsigned' => TRUE
@@ -37,7 +37,7 @@ function duty_schedule_schema() {
 	'primary key' => array('shift_id')
 	//TODO: figure out a way to index using the start time for fast lookups.  This table is going to get big, and we can't do linear time searches all over the place
 	);//closes schema array
-	$schema['duty_schedule_slots'] = array(
+	$schema['shift_scheduler_slots'] = array(
 	'description' => t('Defines the different slots that must be filled in a work day.'),
 	'fields' => array(
 		'slot_id' => array(
@@ -62,9 +62,9 @@ function duty_schedule_schema() {
 				  ),
 			  ),
 	'primary key' => array('slot_id')
-	);//closes the "$schema['duty_schedule_slots'] = array(" line
+	);//closes the "$schema['shift_scheduler_slots'] = array(" line
 
-	$schema['duty_schedule_slot_times'] = array(
+	$schema['shift_scheduler_slot_times'] = array(
 	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
 	'fields' => array(
 		'slot_time_id' => array(
@@ -98,15 +98,15 @@ function duty_schedule_schema() {
 }
 
 
-function duty_schedule_update_6101(){
+function shift_scheduler_update_6101(){
   $ret = array();
-  db_change_field($ret, 'duty_schedule_shifts', 'medic_slot', 'slot_id', array(
+  db_change_field($ret, 'shift_scheduler_shifts', 'medic_slot', 'slot_id', array(
 			'description' => t('The position in the duty crew.'),
 			'type' => 'int',
 			'size' => 'tiny',
 			'not null' => TRUE)
 		  );
-  db_create_table($ret, 'duty_schedule_slots', array(
+  db_create_table($ret, 'shift_scheduler_slots', array(
 	'description' => t('Defines the different slots that must be filled in a work day.'),
 	'fields' => array(
 		'slot_id' => array(
@@ -133,7 +133,7 @@ function duty_schedule_update_6101(){
 	'primary key' => array('slot_id')
 						  )
 	       );
-  db_create_table($ret, 'duty_schedule_slot_times', array(
+  db_create_table($ret, 'shift_scheduler_slot_times', array(
 	'description' => t('Defines the shifts that are automatically filled in in each slot when days are added to the schedule'),
 	'fields' => array(
 		 'slot_time_id' => array(
@@ -163,19 +163,19 @@ function duty_schedule_update_6101(){
 	'primary key' => array('slot_time_id')
 	)
 	);
-
-
 }
+
+
 
 //standard functions to create and destroy
 //the tables on install and uninstall
-function duty_schedule_install() {
-	//create duty_schedule tables	
-	drupal_install_schema('duty_schedule');
+function shift_scheduler_install() {
+	//create shift_scheduler tables	
+	drupal_install_schema('shift_scheduler');
 }
 
-function duty_schedule_uninstall(){
-	//drop duty_schedule talbes
-	drupal_uninstall_schema('duty_schedule');
+function shift_scheduler_uninstall(){
+	//drop shift_scheduler talbes
+	drupal_uninstall_schema('shift_scheduler');
 }
 
