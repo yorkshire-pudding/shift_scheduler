@@ -119,7 +119,9 @@ function shift_scheduler_schema() {
 }
 
 
-function shift_scheduler_update_6101(){
+
+function shift_scheduler_update_6200(){
+  
   $ret = array();
   db_change_field($ret, 'shift_scheduler_shifts', 'medic_slot', 'slot_id', array(
 			'description' => t('The position in the duty crew.'),
@@ -184,12 +186,6 @@ function shift_scheduler_update_6101(){
 	'primary key' => array('slot_time_id')
 	)
 	);
-}
-
-function shift_scheduler_update_6200(){
-  
-  $ret = array();
-
 
   db_create_table($ret, 'shift_scheduler_slot_roles', array(
 							    'description' => t('Defines the roles that are elligible to fill each slot.'),
