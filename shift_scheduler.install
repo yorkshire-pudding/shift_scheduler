@@ -20,11 +20,13 @@ function shift_scheduler_schema() {
       'start_time' => array(
         'description' => 'The start time for a shift.',
         'type' => 'datetime',
+        'mysql_type' => 'DATETIME',
         'not null' => TRUE,
       ),
       'end_time' => array(
         'description' => 'The start time for a shift.',
         'type' => 'datetime',
+        'mysql_type' => 'DATETIME',
         'not null' => TRUE,
       ),
       'slot_id' => array(
@@ -88,11 +90,13 @@ function shift_scheduler_schema() {
       'start_time' => array(
         'description' => 'The start time for a shift.',
         'type' => 'datetime',
+        'mysql_type' => 'DATETIME',
         'not null' => TRUE,
       ),
       'end_time' => array(
         'description' => 'The start time for a shift.',
         'type' => 'datetime',
+        'mysql_type' => 'DATETIME',
         'not null' => TRUE,
       ),
       'monday' => array(
@@ -168,20 +172,13 @@ function shift_scheduler_schema() {
     'primary key' => array('slot_id', 'rid'),
   );
 
-
   return $schema;
 }
 
 //standard functions to create and destroy
 //the tables on install and uninstall
-function shift_scheduler_install() {
-  //Create shift_scheduler tables.
-  drupal_install_schema('shift_scheduler');
-}
 
 function shift_scheduler_uninstall() {
-  //drop shift_scheduler tables
-  drupal_uninstall_schema('shift_scheduler');
   //remove variables set by the shift scheduler
   variable_del('shift_scheduler_claim_open_shifts');
   variable_del('shift_scheduler_relinquish_shifts');
