@@ -1967,7 +1967,7 @@ function shift_scheduler_menu() {
     'type'             => MENU_CALLBACK,
   );
   $items['shift_scheduler/create_event_shifts'] = array(
-    'title'            => t('Create Shifts for Events'),
+    'title'            => 'Create Shifts for Events',
     'page callback'    => 'shift_scheduler_create_event_shifts',
     'access arguments' => array('add to shift schedule'),
     'type'             => MENU_NORMAL_ITEM,
@@ -1986,7 +1986,7 @@ function shift_scheduler_menu() {
     'type'             => MENU_NORMAL_ITEM,
   );
   $items['admin/settings/shift_scheduler/create_event_shift'] = array(
-    'title'            => t('Create an event shift type'),
+    'title'            => 'Create an event shift type',
     'page callback'    => 'shift_scheduler_create_event_shift_types',
     'access arguments' => array('administer shift_scheduler'),
     'type'             => MENU_NORMAL_ITEM,
