@@ -67,6 +67,13 @@ function shift_scheduler_schema() {
         'not null' => FALSE,
         'unsigned' => TRUE,
       ),
+      'slot_type' => array(
+        'description' => '0 - Recurring, 1 - Event',
+        'size' => 'tiny',
+        'type' => 'int',
+        'not null' => FALSE,
+        'unsigned' => TRUE,
+      ),      
     ),
     'primary key' => array('slot_id'),
   ); //closes the "$schema['shift_scheduler_slots'] = array(" line
