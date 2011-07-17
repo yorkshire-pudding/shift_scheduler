@@ -71,7 +71,7 @@ function shift_scheduler_schema() {
         'description' => '0 - Recurring, 1 - Event',
         'size' => 'tiny',
         'type' => 'int',
-        'not null' => FALSE,
+        'not null' => TRUE,
         'unsigned' => TRUE,
       ),      
     ),

@@ -1013,6 +1013,7 @@ function shift_scheduler_old_shifts_results() {
   $midnight = 0;
   $has_content = FALSE;
   foreach($result as $row){
+
     $has_content = TRUE;
     $stt = strtotime($row->start_time);
     $ett = strtotime($row->end_time);
@@ -1292,6 +1293,7 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
     $new_record = array(
       'display_name' => $form_state['values']['name'],
       'status' => 0,
+      'slot_type' => 0,
     );
     drupal_write_record('shift_scheduler_slots', $new_record);
     $slot_id = db_query("SELECT slot_id FROM {shift_scheduler_slots} WHERE display_name = :displayname", array(':displayname' => $form_state['values']['name']))->fetchField();
