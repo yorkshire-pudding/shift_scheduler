@@ -1272,6 +1272,7 @@ function shift_scheduler_admin_slot_submit($form, &$form_state) {
       }
     }
     drupal_set_message(t('The slot has been updated.'));
+	$form_state['redirect'] = array('admin/settings/shift_scheduler');
   }
   elseif ($form_state['values']['op'] == t('Delete slot')) {
   	db_delete('shift_scheduler_slots')
