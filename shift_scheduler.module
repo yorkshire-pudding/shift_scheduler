@@ -300,7 +300,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
         'shift_id' => $shift_id,        
         'uid'      => $user->uid,
         'claim'    => TRUE),
-      'attributes' => array('class' => 'open-shift'));
+      'attributes' => array('style' => 'color: #FF0000'));
     $link_page = 'shift_scheduler';
   }
   // If relinquishing shifts is enabled and the shift belongs to this user,
