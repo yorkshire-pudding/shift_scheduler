@@ -1,4 +1,3 @@
-; $Id$
 name = "Shift scheduler"
 description = "A module to handle scheduling employees in shifts"
 core = 7.x
