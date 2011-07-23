@@ -1847,111 +1847,6 @@ function shift_scheduler_create_event_shifts_form_submit($form, &$form_state) {
 		}
 	}
 }
-/**
- *  handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_validate()
- * @see shift_scheduler_create_event_shift_types_form_submit()
- *
- * This is dead simple. It merely adds an event type for events
- * Note how submit function merely adds slot_types = 1
- *
- */
-
-function shift_scheduler_create_event_shift_types() {
-	$out = drupal_get_form('shift_scheduler_create_event_shift_types_form');
-	return drupal_render($out);
-}
-/**
- *  Form handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_validate()
- *
- * This is dead simple. It merely adds an event type for events
- * Note how submit function merely adds slot_types = 1
- *
- */
-function shift_scheduler_create_event_shift_types_form($form_state) {
-	//$form = ();
-	$form['display_name'] = array(
-    '#title'       => t('Slot name'),
-    '#type'        => 'textfield',
-    '#size'        => 32,
-    '#maxlength'   => 64,
-    '#description' => t('Enter the description of the shift')
-
-	);
-	$form['submit'] = array(
-    '#type'        => 'submit',
-    '#value'       => 'Submit',
-	);
-	$form['clear'] = array(
-      '#type'      => 'submit',
-      '#value'     => 'Reset form',
-      '#validate'  => array('shift_scheduler_create_event_shift_types_form_clear'
-      ),
-    );
-    $form['#submit'][]   = 'shift_scheduler_create_event_shift_types_form_submit';
-    $form['#validate'][] = 'shift_scheduler_create_event_shift_types_form_validate';
-    return $form;
-}
-/**
- *  Reset Form handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_validate()
- *
- *
- */
-
-function shift_scheduler_create_event_shift_types_form_clear($form, &$form_state) {
-	unset ($form_state['values']);  // ensures fields are blank after reset
-	// button is clicked
-	$form_state['rebuild'] = TRUE;
-}
-
-/**
- *  Validation handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_submit()
- *
- * Merely checks if there is an event slot with the same name. Avoids possible confusion
- * of having two slots with same name. Of course this could be allowed by also SELECT 
- * slot type = 1. But KISS again rules.
- *
- */
-function shift_scheduler_create_event_shift_types_form_validate($form, &$form_state) {
-	$display_name = $form_state['values']['display_name'];
-	$result = db_query("SELECT slot_id FROM {shift_scheduler_slots} WHERE display_name = :name", array(':name' => $display_name))->fetchField();
-	if (!empty($result)) {
-		form_set_error('start_date', t('Adding event  shift failed because adding this shift results in the creation of duplicate shifts'));
-	}
-}
-/**
- *  Submit handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_validate()
- *
- * This writes a record to shift_scheduler_slots
- * NOTE No redirect this can be changed.
- */
-
-function shift_scheduler_create_event_shift_types_form_submit($form, &$form_state) {
-	$display_name = $form_state['values']['display_name'];
-	$slot_type = 1;
-	$status = 0;
-	$result = db_insert('shift_scheduler_slots')
-	->fields(array(
-		'display_name' => $display_name,
-		'slot_type'    => $slot_type,
-		'status'       => $status,
-	))->execute();
-	drupal_set_message(t('Your event_shift %name has been saved.', array('%name' => $display_name)));
-}
 
 /**
  * Implementation of hook_menu().
@@ -2006,12 +1901,6 @@ function shift_scheduler_menu() {
   $items['admin/settings/shift_scheduler/slot'] = array(
     'title'            => 'Edit slots',
     'page callback'    => 'shift_scheduler_admin_slots',
-    'access arguments' => array('administer shift_scheduler'),
-    'type'             => MENU_NORMAL_ITEM,
-  );
-  $items['admin/settings/shift_scheduler/create_event_shift'] = array(
-    'title'            => 'Create an event shift type',
-    'page callback'    => 'shift_scheduler_create_event_shift_types',
     'access arguments' => array('administer shift_scheduler'),
     'type'             => MENU_NORMAL_ITEM,
   );
