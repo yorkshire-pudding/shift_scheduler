@@ -64,14 +64,14 @@ function shift_scheduler_schema() {
         'description' => '0 - Active, 1 - Deactivated',
         'size' => 'tiny',
         'type' => 'int',
-        'not null' => TRUE,
+        'not null' => FALSE,
         'unsigned' => TRUE,
       ),
       'slot_type' => array(
         'description' => '0 - Recurring, 1 - Event',
         'size' => 'tiny',
         'type' => 'int',
-        'not null' => TRUE,
+        'not null' => FALSE,
         'unsigned' => TRUE,
       ),      
     ),
@@ -192,3 +192,15 @@ function shift_scheduler_uninstall() {
   variable_del('shift_scheduler_link_to_profile');
 }
 
+
+//upgrade function to implement hook_update_N
+function shift_scheduler_update_7100() {
+	$ret = array();
+	db_add_field($ret, 'shift_scheduler_slots', 'slot_type', array(
+		'description' => '0 - Recurring, 1 - Event',
+    'size' => 'tiny',
+    'type' => 'int',
+    'not null' => FALSE,
+    'unsigned' => TRUE,				
+	));	
+}
