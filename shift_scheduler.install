@@ -200,7 +200,7 @@ function shift_scheduler_update_7100() {
 		'description' => '0 - Recurring, 1 - Event',
     'size' => 'tiny',
     'type' => 'int',
-    'not null' => FALSE,
+    'not null' => TRUE,
     'unsigned' => TRUE,				
 	));	
 }
