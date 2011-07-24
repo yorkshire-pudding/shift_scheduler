@@ -331,6 +331,8 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
       $shift_text = l($shift_text, $link_page, $ops); //link
     }
   }
+	//Regardless of whether the text is a link or not, wrap it in a span with
+	//the appropriate class (colors things appropriately)
   if ($uid == 0 || $uid == NULL) {
     //If it's still an open shift, make it red and bold.
     $shift_text = '<span class="open-shift">' . $shift_text . '</span>';
@@ -1040,7 +1042,7 @@ function shift_scheduler_old_shifts_results() {
   return _shift_scheduler_wrap_content($page_content);
 }
 
-/**** ADMINISTRATIVE FEATURES
+/**** ADMINISTRATIVE FEATURES *******
 
  Everything beyond this point defines administrative features for
  customizing the shift schedule to a particular organization.  For example,
@@ -1053,7 +1055,10 @@ function shift_scheduler_old_shifts_results() {
 /**
  *
  * Define the apperance of the admin_slots page.
- *
+ * If a slot_id is specified in url (e.g. admin/settings/shift_scheduler/slot/4),
+ * this basically just renders shift_scheduler_admin_slot_form. Otherwise
+ * it shows a table of all the defined slots with links to perform admin tasks
+ * specifically for each slot.
  *
  * @ingroup admin
  */
@@ -1068,9 +1073,14 @@ function shift_scheduler_admin_slots() {
         'colspan' => 2,
       ),
     );
-    $result = db_query("SELECT slot_id, display_name FROM {shift_scheduler_slots} ORDER BY display_name");
+    $result = db_query("SELECT slot_id, display_name, slot_type FROM {shift_scheduler_slots} ORDER BY display_name");
     foreach ($result as $row){
-      $edit_default_shifts = l(t('edit default shifts'), 'admin/settings/shift_scheduler/default_shifts/' . $row->slot_id);
+			if ($row->slot_type ==0){
+      	$edit_default_shifts = l(t('edit default shifts'), 'admin/settings/shift_scheduler/default_shifts/' . $row->slot_id);
+			}
+			else {
+				$edit_default_shifts = t('edit default shifts');
+			}
       $rows[] = array(
         $row->display_name,
         l(t('edit slot'), 'admin/settings/shift_scheduler/slot/' . $row->slot_id),
@@ -1124,6 +1134,17 @@ function shift_scheduler_admin_slot_form() {
         t('Deactivated'),
       ),
     );
+		$slot_type_instructions = t('"Repeating" - The slot repeats on a weekly or daily basis. You set "Default Shifts", which will be added to the schedule using the "Add Days" feature. "Sporadic" - The slot only needs to be filled during certain special events. Shifts for this slot will be created one at a time using the "Create Shifts for Events" feature.');
+		$form['type'] = array(
+			'#title'       => t('Slot type'),
+			'#type'        => 'radios',
+			'#default_value'=>$row->slot_type,
+			'#description' => $slot_type_instructions,
+			'#options'     => array(
+				t('Repeating'),
+				t('Sporatic'),
+			),
+		);
     $instructions = t('In order for a user to take a shift in a particular slot, the user must be assinged a role that is eligible for that slot. The roles  used are the same roles that drupal uses to assign permissions.  Use this form to define which roles are eligible to take which slots. Add a role using the New Eligible Role menu. To remove a role, simply change to to a blank.');
     $form['instructions'] = array(
       '#type'        => 'item',
@@ -1145,7 +1166,7 @@ function shift_scheduler_admin_slot_form() {
     foreach ($result as $row){		
       $form[$i -1] = array(
         '#type'          => 'select',
-        '#title'         => t('Role !number', array('!number' => $i)),
+        '#title'         => t('Eligible Role !number', array('!number' => $i)),
         '#options'       => $role_array,
         '#default_value' => $row->rid,
       );
@@ -1251,13 +1272,14 @@ function shift_scheduler_admin_slot_validate($form, &$form_state) {
 function shift_scheduler_admin_slot_submit($form, &$form_state) {
   if ($form_state['values']['op'] == t('Save slot')) {
   	db_update('shift_scheduler_slots')
-		->fields(array('display_name' => $form_state['values']['name']))
-		->condition('slot_id', $form_state['values']['slot_id'], '=')
-		->execute();
-  	db_update('shift_scheduler_slots')
-		->fields(array('status' => $form_state['values']['status']))
-		->condition('slot_id', $form_state['values']['slot_id'], '=')
-		->execute();
+			->fields(array(
+				'status'      => $form_state['values']['status'],
+				'display_name'=> $form_state['values']['name'],
+				'slot_type'   => $form_state['values']['type'],
+				)
+			 )
+			->condition('slot_id', $form_state['values']['slot_id'], '=')
+			->execute();
 	
 	db_delete('shift_scheduler_slot_roles')
 		->condition('slot_id', $form_state['values']['slot_id'], '=')
@@ -1828,110 +1850,6 @@ function shift_scheduler_create_event_shifts_form_submit($form, &$form_state) {
 		}
 	}
 }
-/**
- *  handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_validate()
- * @see shift_scheduler_create_event_shift_types_form_submit()
- *
- * This is dead simple. It merely adds an event type for events
- * Note how submit function merely adds slot_types = 1
- *
- */
-
-function shift_scheduler_create_event_shift_types() {
-	$out = drupal_get_form('shift_scheduler_create_event_shift_types_form');
-	return drupal_render($out);
-}
-/**
- *  Form handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_validate()
- *
- * This is dead simple. It merely adds an event type for events
- * Note how submit function merely adds slot_types = 1
- *
- */
-function shift_scheduler_create_event_shift_types_form($form_state) {
-	//$form = ();
-	$form['display_name'] = array(
-    '#title'       => t('Slot name'),
-    '#type'        => 'textfield',
-    '#size'        => 32,
-    '#maxlength'   => 64,
-    '#description' => t('Enter the description of the shift')
-	);
-	$form['submit'] = array(
-    '#type'        => 'submit',
-    '#value'       => 'Submit',
-	);
-	$form['clear'] = array(
-      '#type'      => 'submit',
-      '#value'     => 'Reset form',
-      '#validate'  => array('shift_scheduler_create_event_shift_types_form_clear'
-      ),
-    );
-    $form['#submit'][]   = 'shift_scheduler_create_event_shift_types_form_submit';
-    $form['#validate'][] = 'shift_scheduler_create_event_shift_types_form_validate';
-    return $form;
-}
-/**
- *  Reset Form handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_validate()
- *
- *
- */
-
-function shift_scheduler_create_event_shift_types_form_clear($form, &$form_state) {
-	unset ($form_state['values']);  // ensures fields are blank after reset
-	// button is clicked
-	$form_state['rebuild'] = TRUE;
-}
-
-/**
- *  Validation handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_submit()
- *
- * Merely checks if there is an event slot with the same name. Avoids possible confusion
- * of having two slots with same name. Of course this could be allowed by also SELECT 
- * slot type = 1. But KISS again rules.
- *
- */
-function shift_scheduler_create_event_shift_types_form_validate($form, &$form_state) {
-	$display_name = $form_state['values']['display_name'];
-	$result = db_query("SELECT slot_id FROM {shift_scheduler_slots} WHERE display_name = :name", array(':name' => $display_name))->fetchField();
-	if (!empty($result)) {
-		form_set_error('start_date', t('Adding event  shift failed because adding this shift results in the creation of duplicate shifts'));
-	}
-}
-/**
- *  Submit handler for shift_scheduler_create_event_shift_types().
- *
- * @see shift_scheduler_create_event_shift_types_form()
- * @see shift_scheduler_create_event_shift_types_form_validate()
- *
- * This writes a record to shift_scheduler_slots
- * NOTE No redirect this can be changed.
- */
-
-function shift_scheduler_create_event_shift_types_form_submit($form, &$form_state) {
-	$display_name = $form_state['values']['display_name'];
-	$slot_type = 1;
-	$status = 0;
-	$result = db_insert('shift_scheduler_slots')
-	->fields(array(
-		'display_name' => $display_name,
-		'slot_type'    => $slot_type,
-		'status'       => $status,
-	))->execute();
-	drupal_set_message(t('Your event_shift %name has been saved.', array('%name' => $display_name)));
-}
 
 /**
  * Implementation of hook_menu().
@@ -1986,12 +1904,6 @@ function shift_scheduler_menu() {
   $items['admin/settings/shift_scheduler/slot'] = array(
     'title'            => 'Edit slots',
     'page callback'    => 'shift_scheduler_admin_slots',
-    'access arguments' => array('administer shift_scheduler'),
-    'type'             => MENU_NORMAL_ITEM,
-  );
-  $items['admin/settings/shift_scheduler/create_event_shift'] = array(
-    'title'            => 'Create an event shift type',
-    'page callback'    => 'shift_scheduler_create_event_shift_types',
     'access arguments' => array('administer shift_scheduler'),
     'type'             => MENU_NORMAL_ITEM,
   );
