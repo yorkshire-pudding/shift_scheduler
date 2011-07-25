@@ -711,7 +711,7 @@ function shift_scheduler_change_shift_form_validate($form, &$form_state) {
 
   $shift_id =  (int) $fi['shift_id'];
   $shift_info = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE shift_id = :shiftid", array(':shiftid' => $shift_id));
-  foreach ($shift_info as $shifttime){
+  foreach ($shift_info as $shifttime){//this loop should only execute once
 	  $start_time = strtotime($shifttime->start_time);
 	  $end_time = strtotime($shifttime->end_time);
   }
@@ -741,6 +741,46 @@ function shift_scheduler_change_shift_form_validate($form, &$form_state) {
     // Check for an invalid split time.
     form_set_error('split_time', t('The split time specified falls outside of the valid range.'));
   }
+  $query_string = "SELECT * FROM {shift_scheduler_shifts} WHERE uid = :new_uid AND uid > 0 AND uid IS NOT NULL AND ((start_time >= :new_start_time AND start_time < :new_end_time) OR (end_time > :new_start_time AND end_time <= :new_end_time))";
+  $start_time_string = date("Y-m-d H:i:00", $start_time);
+  $end_time_string = date("Y-m-d H:i:00", $end_time);
+  $split_problem = FALSE;
+  if (!$split) {
+    $query = db_query($query_string, array(
+	  ':new_uid' => $fi['volunteer'],
+	  ':new_start_time' =>$start_time_string,
+	  ':new_end_time' =>$end_time_string,
+	  )
+	)->fetchField();
+    if (!empty($query)) {
+  	form_set_error('volunteer', t('Shift change results in putting the first volunteer in two shifts at once'));
+    }
+  }
+  else {
+    $split_time_string = date("Y-m-d H:i:00", $split_time);
+    // Check if the primary volunteer
+    $query = db_query($query_string, array(
+	  ':new_uid' => $fi['volunteer'],
+	  ':new_start_time' =>$start_time_string,
+	  ':new_end_time' =>$split_time_string,
+      )
+    )->fetchField();
+    if (!empty($query)) {
+      form_set_error('volunteer', t('Shift change results in putting the first volunteer in two shifts at once'));
+    }
+    else {
+      $query = db_query($query_string, array(
+	  ':new_uid' => $fi['secondary_volunteer'],
+	  ':new_start_time' =>$split_time_string,
+	  ':new_end_time' =>$end_time_string,
+        )
+      )->fetchField();
+      if (!empty($query)) {
+        form_set_error('secondary_volunteer', t('Shift change results in putting the second volunteer in two shifts at once'));
+      }
+    }
+  }
+  
 }
 
 /*
@@ -797,6 +837,7 @@ function shift_scheduler_change_shift_form_submit($form, &$form_state) {
     if ($next_shift_info) {
       // If there is a next shift, redirect to changing it.
       $form_state['redirect'] = array(
+
 
 	    'shift_scheduler/change_shift', array(
 		  'query' => array(
@@ -1805,7 +1846,7 @@ function shift_scheduler_create_event_shifts_form_validate($form, &$form_state) 
 	$ets = date("Y-m-d H:i:00", $end_time);//start time string
 	// Check the database for a shift with the same slot_id that overlaps in time with the new
 	// shift that we are trying to create. If you find one, show an error.
-	$query = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE slot_id = :new_slot_id AND ((start_time >= :new_start_time AND start_time <= :new_end_time) OR (end_time >= :new_start_time AND end_time <= :new_end_time))", array(
+	$query = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE slot_id = :new_slot_id AND ((start_time >= :new_start_time AND start_time < :new_end_time) OR (end_time > :new_start_time AND end_time <= :new_end_time))", array(
 	  ':new_slot_id' => $form_state['values']['slot_id'],
 	  ':new_start_time' =>$sts,
 	  ':new_end_time' =>$ets,
