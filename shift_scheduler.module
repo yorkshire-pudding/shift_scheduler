@@ -50,9 +50,9 @@ function shift_scheduler_permission() {
  * appended to the top of each of the pages.
  */
 function shift_scheduler_init() {
-  if (drupal_is_front_page()){
+//  if (drupal_is_front_page()){
     drupal_add_css(drupal_get_path('module', 'shift_scheduler') . '/shift_scheduler.css');
-  }
+//  }
 }
 
 /**
@@ -284,11 +284,11 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
     $ops = array('query' => array('shift' => "$shift_id"));
     if ($name == t("Open Shift")) {
       // Make the link red.
-      $ops['attributes'] = array('style' => 'color: #FF0000; font-weight:bold');
+      $ops['attributes'] = array('class' => 'open-shift');
     }
     elseif ($uid == -1) {
       // Make the link green
-      $ops['attributes'] = array('style' => 'color: #00FF00');
+      $ops['attributes'] = array('class' => 'closed-shift');
     }
     $link_page = 'shift_scheduler/change_shift';
   }
@@ -300,7 +300,8 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
         'shift_id' => $shift_id,        
         'uid'      => $user->uid,
         'claim'    => TRUE),
-      'attributes' => array('style' => 'color: #FF0000'));
+	  	);
+    $ops['attributes'] = array('style' => 'color: #FF0000');
     $link_page = 'shift_scheduler';
   }
   // If relinquishing shifts is enabled and the shift belongs to this user,
