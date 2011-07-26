@@ -741,7 +741,7 @@ function shift_scheduler_change_shift_form_validate($form, &$form_state) {
     // Check for an invalid split time.
     form_set_error('split_time', t('The split time specified falls outside of the valid range.'));
   }
-  $query_string = "SELECT * FROM {shift_scheduler_shifts} WHERE uid = :new_uid AND uid > 0 AND uid IS NOT NULL AND ((start_time >= :new_start_time AND start_time < :new_end_time) OR (end_time > :new_start_time AND end_time <= :new_end_time))";
+  $query_string = "SELECT * FROM {shift_scheduler_shifts} WHERE uid = :new_uid AND uid > 0 AND uid IS NOT NULL AND shift_id != :current_shift_id AND ((start_time >= :new_start_time AND start_time < :new_end_time) OR (end_time > :new_start_time AND end_time <= :new_end_time))";
   $start_time_string = date("Y-m-d H:i:00", $start_time);
   $end_time_string = date("Y-m-d H:i:00", $end_time);
   $split_problem = FALSE;
@@ -750,6 +750,7 @@ function shift_scheduler_change_shift_form_validate($form, &$form_state) {
 	  ':new_uid' => $fi['volunteer'],
 	  ':new_start_time' =>$start_time_string,
 	  ':new_end_time' =>$end_time_string,
+          ':current_shift_id' =>$fi['shift_id']
 	  )
 	)->fetchField();
     if (!empty($query)) {
@@ -758,11 +759,12 @@ function shift_scheduler_change_shift_form_validate($form, &$form_state) {
   }
   else {
     $split_time_string = date("Y-m-d H:i:00", $split_time);
-    // Check if the primary volunteer
+    // Check if the primary volunteer is already in another shift
     $query = db_query($query_string, array(
 	  ':new_uid' => $fi['volunteer'],
 	  ':new_start_time' =>$start_time_string,
 	  ':new_end_time' =>$split_time_string,
+          ':current_shift_id'=>$fi['shift_id']
       )
     )->fetchField();
     if (!empty($query)) {
@@ -773,6 +775,7 @@ function shift_scheduler_change_shift_form_validate($form, &$form_state) {
 	  ':new_uid' => $fi['secondary_volunteer'],
 	  ':new_start_time' =>$split_time_string,
 	  ':new_end_time' =>$end_time_string,
+          ':current_shift_id' =>-99,//don't actually need this check here, so just add a useless check
         )
       )->fetchField();
       if (!empty($query)) {
