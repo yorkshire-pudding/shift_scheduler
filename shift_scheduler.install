@@ -195,12 +195,14 @@ function shift_scheduler_uninstall() {
 
 //upgrade function to implement hook_update_N
 function shift_scheduler_update_7000() {
-	$ret = array();
-	db_add_field($ret, 'shift_scheduler_slots', 'slot_type', array(
-		'description' => '0 - Recurring, 1 - Event',
+  $ret = array();
+  db_add_field('shift_scheduler_slots','slot_type', array(
+    'description' => '0 - Recurring, 1 - Event',
     'size' => 'tiny',
     'type' => 'int',
     'not null' => TRUE,
-    'unsigned' => TRUE,				
-	));	
+    'unsigned' => TRUE,
+    'initial' => 0				
+    ));
+  return $ret;
 }
