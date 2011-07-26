@@ -1179,7 +1179,7 @@ function shift_scheduler_admin_slot_form() {
         t('Deactivated'),
       ),
     );
-		$slot_type_instructions = t('"Repeating" - The slot repeats on a weekly or daily basis. You set "Default Shifts", which will be added to the schedule using the "Add Days" feature. "Sporadic" - The slot only needs to be filled during certain special events. Shifts for this slot will be created one at a time using the "Create Shifts for Events" feature.');
+		$slot_type_instructions = t('"Repeating" - The slot repeats on a weekly or daily basis. You set "Default Shifts", which will be added to the schedule using the "Add Days" feature. "Event" - The slot only needs to be filled during certain special events. Shifts for this slot will be created one at a time using the "Create Shifts for Events" feature.');
 		$form['type'] = array(
 			'#title'       => t('Slot type'),
 			'#type'        => 'radios',
@@ -1187,7 +1187,7 @@ function shift_scheduler_admin_slot_form() {
 			'#description' => $slot_type_instructions,
 			'#options'     => array(
 				t('Repeating'),
-				t('Sporatic'),
+				t('Event'),
 			),
 		);
     $instructions = t('In order for a user to take a shift in a particular slot, the user must be assinged a role that is eligible for that slot. The roles  used are the same roles that drupal uses to assign permissions.  Use this form to define which roles are eligible to take which slots. Add a role using the New Eligible Role menu. To remove a role, simply change to to a blank.');
