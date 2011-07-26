@@ -296,7 +296,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
   // claim it.
   elseif (_shift_scheduler_can_claim($user->uid, $shift_id)) {
     $ops = array(
-	  'query'      => array(
+	  	'query'      => array(
         'shift_id' => $shift_id,        
         'uid'      => $user->uid,
         'claim'    => TRUE),
@@ -310,7 +310,7 @@ function _schedule_format_shift_text($uid, $shift_id, $start_time_t, $end_time_t
               && variable_get('shift_scheduler_relinquish_shifts', 0) == 1
               && $start_time_t > (REQUEST_TIME - 60 * 60 * 4)) {
     $ops = array(
-	  'query' => array(
+	  	'query' => array(
         'shift_id' => $shift_id,
         'relinquish' => TRUE));
     $link_page = 'shift_scheduler';
@@ -366,10 +366,10 @@ function shift_scheduler_schedule() {
   if (isset($_GET['claim']) && isset($_GET['uid']) && ($_GET['uid'] == $user->uid) && isset($_GET['shift_id'])
           && variable_get('shift_scheduler_claim_open_shifts', FALSE)
           && _shift_scheduler_can_claim($user->uid, $_GET['shift_id'])){
-	db_update('shift_scheduler_shifts')
-		->fields(array('uid' => '$user->uid'))
-		->condition('shift_id', (int) $_GET['shift_id'], '=')
-		->execute();	
+		db_update('shift_scheduler_shifts')
+			->fields(array('uid' => (int) $user->uid))
+			->condition('shift_id', (int) $_GET['shift_id'], '=')
+			->execute();	
   }
   // Handle relinquishing shifts.
   elseif (isset($_GET['relinquish']) && isset($_GET['shift_id'])
