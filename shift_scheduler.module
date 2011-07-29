@@ -1838,29 +1838,33 @@ function shift_scheduler_create_event_shifts_form_clear($form, &$form_state) {
  *
  */
 function shift_scheduler_create_event_shifts_form_validate($form, &$form_state) {
-	$ss         = $form_state['values']['start_time'];
-	$es         = $form_state['values']['end_time'];
-	$eventtdate = $form_state['values']['event_date'];
-	$eventday   = $form_state['values']['event_date']['day'];
-	$eventmon   = $form_state['values']['event_date']['month'];
-	$eventyear  = $form_state['values']['event_date']['year'];
-	$start_time = mktime((int) ($ss[0] . $ss[1]), (int) ($ss[2] . $ss[3]), (int) 0, (int) ($eventmon), (int) ($eventday), (int) ($eventyear));
-	$end_time = mktime((int) ($es[0] . $es[1]), (int) ($es[2] . $es[3]), (int) 0, (int) ($eventmon), (int) ($eventday), (int) ($eventyear));
-	$sts = date("Y-m-d H:i:00", $start_time); //start time string
-	$ets = date("Y-m-d H:i:00", $end_time);//end time string
-	// Check the database for a shift with the same slot_id that overlaps in time with the new
-	// shift that we are trying to create. If you find one, show an error.
-	foreach ($form_state['values']['slot_id'] as $slot_id) {
-	  $query = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE slot_id = :slot_id AND ((start_time>=:start_time AND start_time<:end_time ) OR (end_time > :start_time AND end_time <= :end_time))", array(
-	    ':slot_id' => $slot_id,
-	    ':start_time' =>$sts,
-	    ':end_time' =>$ets,
-	    )
-	  )->fetchField();
-	  if (!empty($query)){
-	    form_set_error('start_date', t('Adding event shift failed because adding this shift results in the creation of duplicate shifts'));
-	  }
-        }
+	if (!empty($form_state['values']['event_date']) && !empty($form_state['values']['start_time']) && !empty($form_state['values']['end_time']) && !empty($form_state['values']['slot_id'])) {
+		$ss         = $form_state['values']['start_time'];
+		$es         = $form_state['values']['end_time'];
+		$eventtdate = $form_state['values']['event_date'];
+		$eventday   = $form_state['values']['event_date']['day'];
+		$eventmon   = $form_state['values']['event_date']['month'];
+		$eventyear  = $form_state['values']['event_date']['year'];
+		$start_time = mktime((int) ($ss[0] . $ss[1]), (int) ($ss[2] . $ss[3]), (int) 0, (int) ($eventmon), (int) ($eventday), (int) ($eventyear));
+		$end_time = mktime((int) ($es[0] . $es[1]), (int) ($es[2] . $es[3]), (int) 0, (int) ($eventmon), (int) ($eventday), (int) ($eventyear));
+		$sts = date("Y-m-d H:i:00", $start_time); //start time string
+		$ets = date("Y-m-d H:i:00", $end_time);//start time string
+		// Check the database for a shift with the same slot_id that overlaps in time with the new
+		// shift that we are trying to create. If you find one, show an error.
+		foreach ($form_state['values']['slot_id'] as $slot_id) {
+		  $query = db_query("SELECT * FROM {shift_scheduler_shifts} WHERE slot_id = :slot_id AND ((start_time>=:start_time AND start_time<:end_time ) OR (end_time > :start_time AND end_time <= :end_time))", array(
+		    ':slot_id' => $slot_id,
+		    ':start_time' =>$sts,
+		    ':end_time' =>$ets,
+		    )
+		  )->fetchField();
+			if (!empty($query)){
+			  form_set_error('start_time', t('Adding event shift failed because adding this shift results in the creation of duplicate shifts'));
+			}
+		}
+	}else {
+		form_set_error('start_time', t('Missing required values.'));
+	}
 }
 /**
  * Form submit handler for shift_scheduler_create_event_shifts_form().
