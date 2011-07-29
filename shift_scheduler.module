@@ -1778,8 +1778,8 @@ function shift_scheduler_create_event_shifts_form($form_state) {
 	$form['event_date'] = array(
     '#type'        => 'date',
     '#title'       => t('Event date'),
-	'#date_format' => $date_format,
-	'#required'    => TRUE,
+    '#date_format' => $date_format,
+    '#required'    => TRUE,
     '#description' => t('The date of the event to be created on the shift rota.'),
 	);
 	$form['start_time'] = array(
@@ -1787,6 +1787,7 @@ function shift_scheduler_create_event_shifts_form($form_state) {
     '#title'       => t('start time'),
     '#size'        => 10,
     '#maxlength'   => 4,
+    '#required'    => TRUE,
     '#description' => t('The start time of the shift.'),
 	);
 	$form['end_time'] = array(
@@ -1794,6 +1795,7 @@ function shift_scheduler_create_event_shifts_form($form_state) {
     '#title'       => t('end time'),
     '#size'        => 10,
     '#maxlength'   => 4,
+    '#required'    => TRUE,
     '#description' => t('The end time of the shift.'),
 	);
 	$form['slot_id'] = array(
@@ -1801,6 +1803,7 @@ function shift_scheduler_create_event_shifts_form($form_state) {
   	'#title'       => t('Shifts for event'),
     '#description' => t('Please choose which shifts are required for this event'),
     '#options'     => $options,
+    '#required'    => TRUE,
 	);
 
 	// Use the slot_tod variable to decide if the form is completed
