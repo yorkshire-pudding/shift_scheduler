@@ -680,6 +680,7 @@ function shift_scheduler_change_shift_form($form_state) {
     '#default_value' => $default_uid,
     '#options'       => $options,
     '#description'   => t('The volunteer on this shift.'),
+    '#attributes'    => array('autofocus'=>'')
   );
   $form['split_time'] = array(
     '#type'      => 'textfield',
