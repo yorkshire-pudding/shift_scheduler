@@ -1801,8 +1801,8 @@ function shift_scheduler_create_event_shifts_form($form_state) {
 	);
 	$form['slot_id'] = array(
     '#type'        => 'checkboxes',
-  	'#title'       => t('Shifts for event'),
-    '#description' => t('Please choose which shifts are required for this event'),
+  	'#title'       => t('Slots for event'),
+    '#description' => t('Please choose which slots need to be filled during this time.'),
     '#options'     => $options,
     '#required'    => TRUE,
 	);
