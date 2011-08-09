@@ -680,7 +680,6 @@ function shift_scheduler_change_shift_form($form_state) {
     '#default_value' => $default_uid,
     '#options'       => $options,
     '#description'   => t('The volunteer on this shift.'),
-    '#attributes'    => array('autofocus'=>'')
   );
   $form['split_time'] = array(
     '#type'      => 'textfield',
@@ -1064,7 +1063,11 @@ function shift_scheduler_old_shifts_results() {
     $has_content = TRUE;
     $stt = strtotime($row->start_time);
     $ett = strtotime($row->end_time);
-    $total_duty += $ett - $stt;
+		if ($ett < $stt){
+			$total_duty +=$ett + 24 * 3600 - $stt;
+		}else{
+			$total_duty += $ett - $stt;
+		}
     // if we've entered a new day,
     // then add a date label and update the $midnight marker
     if ($midnight < $stt) {
@@ -1801,8 +1804,8 @@ function shift_scheduler_create_event_shifts_form($form_state) {
 	);
 	$form['slot_id'] = array(
     '#type'        => 'checkboxes',
-  	'#title'       => t('Slots for event'),
-    '#description' => t('Please choose which slots need to be filled during this time.'),
+  	'#title'       => t('Shifts for event'),
+    '#description' => t('Please choose which shifts are required for this event'),
     '#options'     => $options,
     '#required'    => TRUE,
 	);
