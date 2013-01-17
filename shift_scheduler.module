@@ -1814,11 +1814,11 @@ function shift_scheduler_create_event_shifts_form($form_state) {
 	// Use the slot_tod variable to decide if the form is completed
 	$form['submit'] = array(
     '#type'        => 'submit',
-    '#value'       => 'Submit',
+    '#value'       => t('Submit'),
 	);
 	$form['clear'] = array(
       '#type'      => 'submit',
-      '#value'     => 'Reset form',
+      '#value'     => t('Reset form'),
       '#validate'  => array('shift_scheduler_create_event_shifts_form_clear'),
     );
     $form['#submit'][] = 'shift_scheduler_create_event_shifts_form_submit';
